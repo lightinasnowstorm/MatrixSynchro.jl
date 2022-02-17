@@ -9,16 +9,16 @@ client = Client("<bot account name>", "matrix.org", "<token here>")
 ```
 You can then subscribe to events and create commands:
 ```julia
-on!(client, Event.message) do data::EventInfo
+on!(client, Event.message) do info::EventInfo
   # Do stuff on the event here
 end
 
-command!(client, "beep") do data::EventInfo
-  SendMessage!(client, data.channel, "boop!")
+command!(client, "beep") do info::EventInfo
+  SendMessage!(client, info.channel, "boop!")
 end
 
-command!(client, "say") do data::EventInfo, saythis::String
-  SendMessage(client, data.channel, "$(GetName(data.sender)) says: $saythis")
+command!(client, "say") do info::EventInfo, saythis::String
+  SendMessage(client, data.channel, "$(GetDisplayName(client, info.sender)) says: $saythis")
 end
 ```
 
