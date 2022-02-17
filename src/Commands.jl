@@ -1,6 +1,5 @@
 include("MatrixClient.jl")
 include("TypedCommands.jl")
-include("DebugPrint.jl")
 
 
 #precedence is from low to high, low check first
@@ -14,11 +13,11 @@ end
 
 function runCmds(eventData::EventInfo)
     lc = eventData.content["body"]
-    debug("Looking for commands to run.")
+    @debug "Looking for commands to run."
     # this hurts me inside
     for (_, invocation) in eventData.client.commandPrecedence
         if occursin(invocation, lc)
-            debug("executing command: $invocation")
+            @debug "executing command: $invocation"
             fn = eventData.client.commands[invocation]
             argTypes = first(methods(fn)).sig.types[3:end]
             matches = match(invocation, lc)
@@ -29,7 +28,7 @@ function runCmds(eventData::EventInfo)
                 push!(args, ArgParse(a, matches["p$p"]))
                 p += 1
             end
-            debug("Got args, executing.")
+            @debug "Got args, executing."
             # splat the args into the function.
             # If there are no args, no args are sent to it.
             fn(eventData, args...)
@@ -48,11 +47,11 @@ end
 
 function addCommand!(fn::Function, client::Client, invo::Regex, precedence::Int = 999)
     guaranteeCommandEvent!(client)
-    haskey(client.commands, invo) && debug("WARNING: redefining $invo")
+    haskey(client.commands, invo) && @warn "redefining $invo"
     client.commands[invo] = fn
     push!(client.commandPrecedence, (precedence, invo))
     sort!(client.commandPrecedence, by = x -> x[1])
-    debug("Added command $invo")
+    @debug "Added command $invo"
 end
 
 function hasSymbols(s::String)

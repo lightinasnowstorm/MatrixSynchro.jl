@@ -79,11 +79,11 @@ function Sync!(client::Client)
         push!(options, "timeout=600000")
     end
 
-    debug("sending request")
+    @debug "sending request"
     res = MatrixRequest(client.info, "GET", "sync?$(join(options,"&"))")
 
     if res.status ≠ 200
-        debug("Sync status was not 200. Exiting.")
+        @warn "Sync status was not 200. Exiting."
         return
     end
 
@@ -95,22 +95,22 @@ function Sync!(client::Client)
     # so we do not want to act on those events as they are not current.
     # However, make sure the sync token has been gotten from the sync first.
     if !hasSyncToken
-        debug("No sync token. Exiting.")
+        @debug "No sync token. Exiting."
         return
     end
 
     # This usually happens if the request times out.
     if !haskey(jsonRes, "rooms")
-        debug("No room data in response. Exiting.")
+        @debug "No room data in response. Exiting."
         return
     end
 
     # We are only interested in the events from rooms the bot is in.
     rooms = jsonRes["rooms"]["join"]
-    debug("starting for loop")
+    @debug "starting sync for loop"
 
     for (roomName, roomData) in rooms, event in roomData["timeline"]["events"]
-        debug("In room $roomName on an event")
+        @debug "In room $roomName on an event"
 
         sender = event["sender"]
         type = event["type"]
@@ -121,26 +121,26 @@ function Sync!(client::Client)
             if (haskey(client.callbacks, type))
                 # TODO: refactor this out to a validation method for each type of event.
                 if type == Event.message && !haskey(event["content"], "body")
-                    debug("Invalid message...")
+                    @warn "Invalid message..."
                     continue
                 end
 
                 typecallbacks = client.callbacks[type]
-                debug("Executing $(length(typecallbacks)) callback(s) for $type")
+                @debug "Executing $(length(typecallbacks)) callback(s) for $type"
                 eventinfo = EventInfo(client, type, sender, roomName, event["content"])
                 for callback in typecallbacks
                     #Callbacks may error (user code), so wrap in try+catch
                     try
                         callback(eventinfo)
                     catch
-                        debug("Callback failed.")
+                        @warn "Callback failed."
                     end
                 end
             end
             # TODO: more tighly integrate commands in here instead of having them rely on callbacks.
         end
     end
-    debug("end")
+    @debug "end sync for loop"
 end
 
 function on!(fn::Function, client::Client, event::String)
