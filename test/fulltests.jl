@@ -30,12 +30,12 @@ MatrixSynchro.on!(client, MatrixSynchro.Event.reaction) do info::EventInfo
 end
 
 #Even if there are messages received, the handler should not run.
-MatrixSynchro.Sync!(client)
+MatrixSynchro.sync!(client)
 global eventsShouldRun = true
-m = MatrixSynchro.SendMessage!(client, channel, "Hello World!")
-MatrixSynchro.React!(client, channel, "😄", m)
+m = MatrixSynchro.sendmessage!(client, channel, "Hello World!")
+MatrixSynchro.react!(client, channel, "😄", m)
 #Now that we've sent a message and reacted to it, both should run.
-MatrixSynchro.Sync!(client)
+MatrixSynchro.sync!(client)
 @test textHasRun
 @test reactHasRun
 
@@ -67,13 +67,13 @@ MatrixSynchro.command!(client, "alltheargs") do info::EventInfo, a::Int, b::Floa
 end
 
 #call the comamnds to check
-MatrixSynchro.SendMessage!(client, channel, "test1")
-MatrixSynchro.SendMessage!(client, channel, "test more with more")
-MatrixSynchro.SendMessage!(client, channel, "test999")
-MatrixSynchro.SendMessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
+MatrixSynchro.sendmessage!(client, channel, "test1")
+MatrixSynchro.sendmessage!(client, channel, "test more with more")
+MatrixSynchro.sendmessage!(client, channel, "test999")
+MatrixSynchro.sendmessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
 
 #and then sync to run the commands.
-MatrixSynchro.Sync!(client)
+MatrixSynchro.sync!(client)
 
 #and they should have all run.
 @test test1

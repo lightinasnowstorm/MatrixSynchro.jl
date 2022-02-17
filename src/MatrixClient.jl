@@ -6,12 +6,12 @@ include("Events.jl")
 include("MessageTypes.jl")
 include("Types.jl")
 
-export SendMessage!, GetRooms, Sync!
+export sendmessage!, getrooms, sync!
 
 # Not sure what version would be best to use.
 const matrixBaseURL = "/_matrix/client/r0/"
 
-function MatrixRequest(info::AccessInfo, func::String, endpoint::String, body = Dict())
+function matrixrequest(info::AccessInfo, func::String, endpoint::String, body = Dict())
     # Success or failure, just send the result back to the calling function:
     # It gets to deal with what went wrong.
     try
@@ -25,50 +25,50 @@ function MatrixRequest(info::AccessInfo, func::String, endpoint::String, body = 
     end
 end
 
-function TxnID(client::Client)
+function txnid(client::Client)
     "m$(Int(1000*datetime2unix(now()))).$(client.changyThing.reqID+=1)"
 end
 
-function SendMessage!(client::Client, roomID, msg)
-    res = MatrixRequest(client.info,
+function sendmessage!(client::Client, roomID, msg)
+    res = matrixrequest(client.info,
         "PUT",
-        "rooms/$roomID/send/m.room.message/$(TxnID(client))",
+        "rooms/$roomID/send/m.room.message/$(txnid(client))",
         Dict("body" => msg, "msgtype" => "m.text"))
     res.status == 200 || throw(MatrixError("Unable to send message."))
     # return the event ID of the sent message.
     JSON.parse(String(res.body))["event_id"]
 end
 
-function React!(client::Client, roomID, reaction, eventID)
-    res = MatrixRequest(client.info, "PUT",
-        "rooms/$roomID/send/m.reaction/$(TxnID(client))",
+function react!(client::Client, roomID, reaction, eventID)
+    res = matrixrequest(client.info, "PUT",
+        "rooms/$roomID/send/m.reaction/$(txnid(client))",
         Dict("m.relates_to" => Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation")))
     res.status == 200 || throw(MatrixError("unable to add reaction"))
 end
 
-function GetRooms(info::AccessInfo)
-    res = MatrixRequest(info, "GET", "joined_rooms")
+function getrooms(info::AccessInfo)
+    res = matrixrequest(info, "GET", "joined_rooms")
     res.status ≠ 200 && throw(MatrixError("unable to get rooms"))
     jsonRes = JSON.parse(String(res.body))
     jsonRes["joined_rooms"]
 end
 
-function GetRooms(client::Client)
-    GetRooms(client.info)
+function getrooms(client::Client)
+    getrooms(client.info)
 end
 
-function GetDisplayName(info::AccessInfo, userID)
-    res = MatrixRequest(info, "GET", "profile/$userID/displayname")
+function getdisplayname(info::AccessInfo, userID)
+    res = matrixrequest(info, "GET", "profile/$userID/displayname")
     res.status ≠ 200 && throw(MatrixError("no such user."))
     jsonRes = JSON.parse(String(res.body))
     jsonRes["displayname"]
 end
 
-function GetDisplayName(client::Client, userID)
-    GetDisplayName(client.info, userID)
+function getdisplayname(client::Client, userID)
+    getdisplayname(client.info, userID)
 end
 
-function Sync!(client::Client)
+function sync!(client::Client)
     # options have to be in URI format
     hasSyncToken = client.changyThing.syncToken ≠ ""
     options = ["filter=0", "full_state=false"]
@@ -81,7 +81,7 @@ function Sync!(client::Client)
     end
 
     @debug "sending request"
-    res = MatrixRequest(client.info, "GET", "sync?$(join(options,"&"))")
+    res = matrixrequest(client.info, "GET", "sync?$(join(options,"&"))")
 
     if res.status ≠ 200
         @warn "Sync status was not 200. Exiting."
@@ -160,7 +160,7 @@ end
 
 function run(client::Client, timeout::Int = 0)
     while true
-        Sync!(client)
+        sync!(client)
         sleep(timeout)
     end
 end

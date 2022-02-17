@@ -17,7 +17,7 @@ const typeRegexes = Dict{Type,Union{String,Array{String}}}(
     User => "@\\w+:[a-zA-z-]+\\.[a-zA-z-\\.]+"
 )
 
-function ArgParse(_::Type{Bool}, s::AbstractString)
+function argparse(_::Type{Bool}, s::AbstractString)
     l = lowercase(string(s))
     if l ∈ ["true", "yes"]
         return true
@@ -28,38 +28,38 @@ function ArgParse(_::Type{Bool}, s::AbstractString)
     throw(ArgumentError("$s is not a boolean value"))
 end
 
-function ArgParse(_::Type{User}, s::AbstractString)
+function argparse(_::Type{User}, s::AbstractString)
     return User(s)
 end
 
-function ArgParse(_::Type{String}, s::AbstractString)
+function argparse(_::Type{String}, s::AbstractString)
     return string(s)
 end
 
-function ArgParse(_::Type{Any}, s::AbstractString)
+function argparse(_::Type{Any}, s::AbstractString)
     return string(s)
 end
 
 # If there is no special method, use the base parse.
-function ArgParse(typ::Type, s::AbstractString)
+function argparse(typ::Type, s::AbstractString)
     return parse(typ, s)
 end
 
 # Generate the regex-giving method for the types that have a consistent one.
 for typ in keys(typeRegexes)
     eval(quote
-        function TypeRegex(_::Type{T}, name::String) where {T<:$typ}
+        function typeregex(_::Type{T}, name::String) where {T<:$typ}
             "(?<$name>$(typeRegexes[$typ]))"
         end
     end)
 end
 
 # String needs a special function because it has quotes around the capture group.
-function TypeRegex(_::Type{String}, name::String)
+function typeregex(_::Type{String}, name::String)
     "\"?(?<$name>[^\"]+)\"?"
 end
 
 # This is for Any. Types are very specific.
-function TypeRegex(_::Type, name::String)
+function typeregex(_::Type, name::String)
     "(?<$name>\\S+)" # A string of anything without spaces. Please type your functions.
 end

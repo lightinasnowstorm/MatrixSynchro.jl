@@ -4,14 +4,14 @@ include("TypedCommands.jl")
 
 #precedence is from low to high, low check first
 module CommandPrecedence
-const Exact = 1
-const CommandWithParams = 2
-const SpecificRegex = 3
-const ThisCommandWithParamsAndAnythingAfter = 4
-const ThisAndAnythingAfter = 5
+const exact = 1
+const command_with_params = 2
+const specific_regex = 3
+const command_with_params_and_more = 4
+const command_and_more = 5
 end
 
-function runCmds(eventData::EventInfo)
+function runcmds(eventData::EventInfo)
     lc = eventData.content["body"]
     @debug "Looking for commands to run."
     # this hurts me inside
@@ -25,7 +25,7 @@ function runCmds(eventData::EventInfo)
             p = 1
             for a in argTypes
                 # Add parsed args to the args.
-                push!(args, ArgParse(a, matches["p$p"]))
+                push!(args, argparse(a, matches["p$p"]))
                 p += 1
             end
             @debug "Got args, executing."
@@ -39,14 +39,14 @@ function runCmds(eventData::EventInfo)
 end
 
 # ! Will be deprecated when commands are merged into Sync!
-function guaranteeCommandEvent!(client::Client)
-    if !haskey(client.callbacks, Event.message) || runCmds ∉ client.callbacks[Event.message]
-        on!(runCmds, client, Event.message)
+function guaranteecommandevent!(client::Client)
+    if !haskey(client.callbacks, Event.message) || runcmds ∉ client.callbacks[Event.message]
+        on!(runcmds, client, Event.message)
     end
 end
 
-function addCommand!(fn::Function, client::Client, invo::Regex, precedence::Int = 999)
-    guaranteeCommandEvent!(client)
+function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int = 999)
+    guaranteecommandevent!(client)
     haskey(client.commands, invo) && @warn "redefining $invo"
     client.commands[invo] = fn
     push!(client.commandPrecedence, (precedence, invo))
@@ -54,8 +54,8 @@ function addCommand!(fn::Function, client::Client, invo::Regex, precedence::Int 
     @debug "Added command $invo"
 end
 
-function neutralizeRegexSymbols(s::String)
-    function neutralizeRegexChar(c::Char)
+function neutralizeregexsymbols(s::String)
+    function neutralizeregexchar(c::Char)
         # Escape all special characters with a regex meaning with a backslash.
         if c ∈ ['\\', '^', '$', '{', '}', '[', ']', '(', ')', '.', '*', '+', '?', '|', '<', '>', '-', '&']
             "\\$c"
@@ -63,7 +63,7 @@ function neutralizeRegexSymbols(s::String)
             c
         end
     end
-    join(map(neutralizeRegexChar, collect(s)))
+    join(map(neutralizeregexchar, collect(s)))
 end
 
 function command!(fn::Function, client::Client, invocation::Regex)
@@ -75,12 +75,12 @@ function command!(fn::Function, client::Client, invocation::Regex)
     if length(fnTakesTheseArgs) > 1
         throw(ArgumentError("A regex command must not take arguments beyond the EventInfo."))
     end
-    addCommand!(fn, client, invocation, CommandPrecedence.SpecificRegex)
+    addcommand!(fn, client, invocation, CommandPrecedence.specific_regex)
 end
 
 function command!(fn::Function, client::Client, invocation::String; takeExtra::Bool = false)
     # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
-    invocation = neutralizeRegexSymbols(invocation)
+    invocation = neutralizeregexsymbols(invocation)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
     #First arg MUST be eventData
@@ -91,10 +91,10 @@ function command!(fn::Function, client::Client, invocation::String; takeExtra::B
 
     #determine precedence level
     precedence = Dict{Tuple,Int}(
-        (false, false) => CommandPrecedence.Exact,
-        (false, true) => CommandPrecedence.ThisAndAnythingAfter,
-        (true, false) => CommandPrecedence.CommandWithParams,
-        (true, true) => CommandPrecedence.ThisCommandWithParamsAndAnythingAfter
+        (false, false) => CommandPrecedence.exact,
+        (false, true) => CommandPrecedence.command_and_more,
+        (true, false) => CommandPrecedence.command_with_params,
+        (true, true) => CommandPrecedence.command_with_params_and_more
     )[(length(fnTakesTheseArgs) == 1, takeExtra)]
 
     invoregexbuilder = [invocation]
@@ -103,7 +103,7 @@ function command!(fn::Function, client::Client, invocation::String; takeExtra::B
     # For each of the other arguments of the function
     for arg in fnTakesTheseArgs[2:end]
         # Get the regex for the type and add it to the builder.
-        push!(invoregexbuilder, TypeRegex(arg, "p$p"))
+        push!(invoregexbuilder, typeregex(arg, "p$p"))
         # p<n> is a capture group in the regex for this argument.
         p += 1
     end
@@ -111,5 +111,5 @@ function command!(fn::Function, client::Client, invocation::String; takeExtra::B
     # Without take extra, it has $ to make sure it ends there.
     invoregex = Regex("^$(join(invoregexbuilder,"\\s+"))$(takeExtra ?  "" : "\$")", "i")
 
-    addCommand!(fn, client, invoregex, precedence)
+    addcommand!(fn, client, invoregex, precedence)
 end
