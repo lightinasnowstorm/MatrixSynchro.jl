@@ -34,20 +34,20 @@ function SendMessage!(client::Client, roomID, msg)
         "PUT",
         "rooms/$roomID/send/m.room.message/$(TxnID(client))",
         Dict("body" => msg, "msgtype" => "m.text"))
-    res.status == 200 || throw("Unable to send message.")
+    res.status == 200 || throw(MatrixError("Unable to send message."))
 end
 
 function React!(client::Client, roomID, reaction, eventID)
-    throw("Not fully implemented and tested.")
+    throw(ArgumentError("Not fully implemented and tested."))
     res = MatrixRequest(client.info, "PUT",
         "rooms/$roomID/m.reaction/$(TxnID(client))",
         Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation"))
-    res.status == 200 || throw("unable to add reaction")
+    res.status == 200 || throw(MatrixError("unable to add reaction"))
 end
 
 function GetRooms(info::AccessInfo)
     res = MatrixRequest(info, "GET", "joined_rooms")
-    res.status ≠ 200 && throw("unable to get rooms")
+    res.status ≠ 200 && throw(MatrixError("unable to get rooms"))
     jsonRes = JSON.parse(String(res.body))
     jsonRes["joined_rooms"]
 end
@@ -58,7 +58,7 @@ end
 
 function GetDisplayName(info::AccessInfo, userID)
     res = MatrixRequest(info, "GET", "profile/$userID/displayname")
-    res.status ≠ 200 && throw("no such user.")
+    res.status ≠ 200 && throw(MatrixError("no such user."))
     jsonRes = JSON.parse(String(res.body))
     jsonRes["displayname"]
 end

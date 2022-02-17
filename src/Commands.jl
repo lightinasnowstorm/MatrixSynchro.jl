@@ -54,30 +54,39 @@ function addCommand!(fn::Function, client::Client, invo::Regex, precedence::Int 
     @debug "Added command $invo"
 end
 
-function hasSymbols(s::String)
-    occursin(r"\/|\>|\,|\.|\[|\]|\{|\}|\(|\)|\\|\||\`|\~|\!|\@|\#|\$|\%|\^|\&|\*|\-|\=|\_|\+|\<|\>|\?|\'|\"", s)
+function neutralizeRegexSymbols(s::String)
+    function neutralizeRegexChar(c::Char)
+        # Escape all special characters with a regex meaning with a backslash.
+        if c ∈ ['\\', '^', '$', '{', '}', '[', ']', '(', ')', '.', '*', '+', '?', '|', '<', '>', '-', '&']
+            "\\$c"
+        else
+            c
+        end
+    end
+    join(map(neutralizeRegexChar,collect(s)))
 end
 
 function command!(fn::Function, client::Client, invocation::Regex)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
     if fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any
     else
-        throw("Command functions must take EventInfo as first parameter")
+        throw(ArgumentError("Command functions must take EventInfo as first parameter"))
     end
     if length(fnTakesTheseArgs) > 1
-        throw("A regex command must not take arguments.")
+        throw(ArgumentError("A regex command must not take arguments beyond the EventInfo."))
     end
     addCommand!(fn, client, invocation, CommandPrecedence.SpecificRegex)
 end
 
 function command!(fn::Function, client::Client, invocation::String; takeExtra::Bool = false)
-    hasSymbols(invocation) && throw("Cannot use a symbols in a command name!")
+    # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
+    invocation = neutralizeRegexSymbols(invocation)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
     #First arg MUST be eventData
     if fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any
     else
-        throw("Command functions must take EventInfo as first parameter")
+        throw(ArgumentError("Command functions must take EventInfo as first parameter"))
     end
 
     #determine precedence level

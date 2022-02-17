@@ -25,7 +25,7 @@ function ArgParse(_::Type{Bool}, s::AbstractString)
         return false
     end
     # this should never throw
-    throw("$s is not a boolean value")
+    throw(ArgumentError("$s is not a boolean value"))
 end
 
 function ArgParse(_::Type{User}, s::AbstractString)

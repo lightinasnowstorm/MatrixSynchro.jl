@@ -1,5 +1,5 @@
 using HTTP
-import Base: string, show
+import Base: string, show, showerror
 
 struct User
     ID::String
@@ -34,6 +34,13 @@ struct EventInfo
     content::Dict{String,Any}
 end
 
+struct MatrixError <: Exception
+    text::String
+end
+
+function showerror(io::IO, e::MatrixError)
+    print(io, e.text)
+end
 
 function StripServerName(serverURL)
     #No protocol:// in url
