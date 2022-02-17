@@ -23,11 +23,13 @@ struct Client
     callbacks::Dict{String,Array{Function}}
     commands::Dict{Regex,Function}
     commandPrecedence::Array{Tuple{Int,Regex}}
+    errors::Bool
     testing::Bool
 end
 
 struct EventInfo
     client::Client
+    EventID::String
     type::String
     sender::String
     channel::String
@@ -63,6 +65,6 @@ end
 
 AccessInfo(username::String, serverURL::String, accessToken::String) = AccessInfo(User("@$username:$serverURL"), StripServerName(serverURL), accessToken)
 
-Client(info::AccessInfo, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), Dict(), [], testing)
+Client(info::AccessInfo, errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), Dict(), [], errors, testing)
 
-Client(username::String, serverURL::String, accessToken::String, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), testing)
+Client(username::String, serverURL::String, accessToken::String, errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors, testing)

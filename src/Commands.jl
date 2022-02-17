@@ -63,7 +63,7 @@ function neutralizeRegexSymbols(s::String)
             c
         end
     end
-    join(map(neutralizeRegexChar,collect(s)))
+    join(map(neutralizeRegexChar, collect(s)))
 end
 
 function command!(fn::Function, client::Client, invocation::Regex)

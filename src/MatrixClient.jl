@@ -26,7 +26,7 @@ function MatrixRequest(info::AccessInfo, func::String, endpoint::String, body = 
 end
 
 function TxnID(client::Client)
-    "$(Int(1000*datetime2unix(now()))).$(client.changyThing.reqID+=1)"
+    "m$(Int(1000*datetime2unix(now()))).$(client.changyThing.reqID+=1)"
 end
 
 function SendMessage!(client::Client, roomID, msg)
@@ -35,13 +35,14 @@ function SendMessage!(client::Client, roomID, msg)
         "rooms/$roomID/send/m.room.message/$(TxnID(client))",
         Dict("body" => msg, "msgtype" => "m.text"))
     res.status == 200 || throw(MatrixError("Unable to send message."))
+    # return the event ID of the sent message.
+    JSON.parse(String(res.body))["event_id"]
 end
 
 function React!(client::Client, roomID, reaction, eventID)
-    throw(ArgumentError("Not fully implemented and tested."))
     res = MatrixRequest(client.info, "PUT",
-        "rooms/$roomID/m.reaction/$(TxnID(client))",
-        Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation"))
+        "rooms/$roomID/send/m.reaction/$(TxnID(client))",
+        Dict("m.relates_to" => Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation")))
     res.status == 200 || throw(MatrixError("unable to add reaction"))
 end
 
@@ -115,6 +116,8 @@ function Sync!(client::Client)
         sender = event["sender"]
         type = event["type"]
 
+        @debug event
+
         # Don't react to the bot's own messages unless running tests.
         if sender ≠ client.info.ID || client.testing
             # Check if there is a callback for the event type.
@@ -127,13 +130,16 @@ function Sync!(client::Client)
 
                 typecallbacks = client.callbacks[type]
                 @debug "Executing $(length(typecallbacks)) callback(s) for $type"
-                eventinfo = EventInfo(client, type, sender, roomName, event["content"])
+                eventinfo = EventInfo(client,event["event_id"], type, sender, roomName, event["content"])
                 for callback in typecallbacks
                     #Callbacks may error (user code), so wrap in try+catch
                     try
                         callback(eventinfo)
-                    catch
+                    catch e
                         @warn "Callback failed."
+                        if client.errors
+                            throw(e)
+                        end
                     end
                 end
             end
