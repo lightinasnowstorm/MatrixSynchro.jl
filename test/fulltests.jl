@@ -1,7 +1,7 @@
 
 # make an EventInfo,
 # allowing the bot itself to trigger events and commands.
-client = MatrixSynchro.Client(readlines("testtoken.txt")...,true)
+client = MatrixSynchro.Client(readlines("testtoken.txt")..., true)
 #Need to insert a channel name in here for the tests to work.
 channel = readlines("testchannel.txt")[1]
 
@@ -15,13 +15,13 @@ MatrixSynchro.on!(client, MatrixSynchro.Event.message) do data::EventInfo
     if onTextShouldRun
         global textHasRun = true
     else
-        @test "Should not run on first sync"==""
+        @test "Should not run on first sync" == ""
     end
 end
 
 #Even if there are messages received, the handler should not run.
 MatrixSynchro.Sync!(client)
-global onTextShouldRun=true
+global onTextShouldRun = true
 MatrixSynchro.SendMessage!(client, channel, "Hello World!")
 #Now that we've sent a message, it should run.
 MatrixSynchro.Sync!(client)

@@ -4,14 +4,14 @@ module MatrixSynchro
 include("Commands.jl")
 
 #Types
-export  AccessInfo, EventInfo, User, string, show
+export AccessInfo, EventInfo, User, string, show
 #state-modifying api commands
-        Sync!, SendMessage!, on!, run
+Sync!, SendMessage!, on!, run
 #not-state-modifying api commands
-        GetRooms, GetDisplayName,
+GetRooms, GetDisplayName,
 #static strings and stuff
-        Event, MessageType,
+Event, MessageType,
 #(typed) commands
-        command!, addTypeRegex!
+command!, TypeRegex, ArgParse
 
 end

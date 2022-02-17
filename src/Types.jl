@@ -51,7 +51,7 @@ function string(u::User)
 end
 
 function show(io::IO, u::User)
-    print(io,string(u))
+    print(io, string(u))
 end
 
 AccessInfo(username::String, serverURL::String, accessToken::String) = AccessInfo(User("@$username:$serverURL"), StripServerName(serverURL), accessToken)

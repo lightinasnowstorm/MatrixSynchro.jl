@@ -39,10 +39,10 @@ end
 
 function React!(client::Client, roomID, reaction, eventID)
     throw("Not fully implemented and tested.")
-    res=MatrixRequest(client.info, "PUT",
-    "rooms/$roomID/m.reaction/$(TxnID(client))",
-    Dict("event_id"=>eventID,"key"=>reaction, "rel_type"=>"m.annotation"))
-    res.status==200 || throw("unable to add reaction")
+    res = MatrixRequest(client.info, "PUT",
+        "rooms/$roomID/m.reaction/$(TxnID(client))",
+        Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation"))
+    res.status == 200 || throw("unable to add reaction")
 end
 
 function GetRooms(info::AccessInfo)
@@ -78,7 +78,7 @@ function Sync!(client::Client)
     else
         push!(options, "timeout=600000")
     end
-    
+
     debug("sending request")
     res = MatrixRequest(client.info, "GET", "sync?$(join(options,"&"))")
 
@@ -111,7 +111,7 @@ function Sync!(client::Client)
 
     for (roomName, roomData) in rooms, event in roomData["timeline"]["events"]
         debug("In room $roomName on an event")
-        
+
         sender = event["sender"]
         type = event["type"]
 
@@ -120,21 +120,21 @@ function Sync!(client::Client)
             # Check if there is a callback for the event type.
             if (haskey(client.callbacks, type))
                 # TODO: refactor this out to a validation method for each type of event.
-                if type==Event.message && !haskey(event["content"],"body")
+                if type == Event.message && !haskey(event["content"], "body")
                     debug("Invalid message...")
                     continue
                 end
 
-                typecallbacks=client.callbacks[type]
+                typecallbacks = client.callbacks[type]
                 debug("Executing $(length(typecallbacks)) callback(s) for $type")
-                eventinfo=EventInfo(client, type, sender, roomName, event["content"])
+                eventinfo = EventInfo(client, type, sender, roomName, event["content"])
                 for callback in typecallbacks
                     #Callbacks may error (user code), so wrap in try+catch
-                    #try
+                    try
                         callback(eventinfo)
-                    #catch
+                    catch
                         debug("Callback failed.")
-                    #end
+                    end
                 end
             end
             # TODO: more tighly integrate commands in here instead of having them rely on callbacks.
@@ -152,7 +152,7 @@ function on!(fn::Function, client::Client, event::String)
     end
 end
 
-function run(client::Client, timeout::Int=0)
+function run(client::Client, timeout::Int = 0)
     while true
         Sync!(client)
         sleep(timeout)
