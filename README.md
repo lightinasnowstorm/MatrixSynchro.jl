@@ -5,6 +5,7 @@ This is a work in progress.
 
 To use this, you first need to create a client:
 ```julia
+using MatrixSynchro
 client = Client("<bot account name>", "matrix.org", "<token here>")
 ```
 You can then subscribe to events and create commands:
@@ -21,5 +22,3 @@ command!(client, "say") do info::EventInfo, saythis::String
   sendmessage(client, data.channel, "$(getdisplayname(client, info.sender)) says: $saythis")
 end
 ```
-
-*You may need to put MatrixSynchro. before everything from this package to get it to work.
