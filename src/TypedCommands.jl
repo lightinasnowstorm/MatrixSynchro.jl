@@ -1,4 +1,3 @@
-
 # These aren't actually regexes
 # If it's an Array{String}, it's [before group, inside capture group, after capture group]
 const typeRegexes = Dict{Type,Union{String,Array{String}}}(

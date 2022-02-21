@@ -1,13 +1,3 @@
-using HTTP
-using JSON
-using Dates
-
-include("Events.jl")
-include("MessageTypes.jl")
-include("Types.jl")
-
-export sendmessage!, getrooms, sync!
-
 # Not sure what version would be best to use.
 const matrixBaseURL = "/_matrix/client/r0/"
 

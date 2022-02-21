@@ -1,7 +1,3 @@
-include("MatrixClient.jl")
-include("TypedCommands.jl")
-
-
 #precedence is from low to high, low check first
 module CommandPrecedence
 const exact = 1

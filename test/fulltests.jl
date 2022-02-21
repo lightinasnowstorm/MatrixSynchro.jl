@@ -1,7 +1,6 @@
-
 # make an EventInfo,
 # allowing the bot itself to trigger events and commands, and to error if there is a failure.
-client = MatrixSynchro.Client(readlines("testtoken.txt")..., true, true)
+client = Client(readlines("testtoken.txt")..., true, true)
 #Need to insert a channel name in here for the tests to work.
 channel = readlines("testchannel.txt")[1]
 
@@ -12,15 +11,20 @@ global eventsShouldRun = false
 global textHasRun = false
 global reactHasRun = false
 
-MatrixSynchro.on!(client, MatrixSynchro.Event.message) do info::EventInfo
+on!(client, Event.message) do info::EventInfo
     if eventsShouldRun
+        # this test should only run the first time.
+        if !textHasRun
+            @test strip(info.content["body"]) == "Hello World!"
+        end
         global textHasRun = true
+        
     else
         @test "Should not run on first sync" == ""
     end
 end
 
-MatrixSynchro.on!(client, MatrixSynchro.Event.reaction) do info::EventInfo
+on!(client, Event.reaction) do info::EventInfo
     if eventsShouldRun
         global reactHasRun = true
         @test info.content["m.relates_to"]["key"]=="😄"
@@ -30,12 +34,12 @@ MatrixSynchro.on!(client, MatrixSynchro.Event.reaction) do info::EventInfo
 end
 
 #Even if there are messages received, the handler should not run.
-MatrixSynchro.sync!(client)
+sync!(client)
 global eventsShouldRun = true
-m = MatrixSynchro.sendmessage!(client, channel, "Hello World!")
-MatrixSynchro.react!(client, channel, "😄", m)
+m = sendmessage!(client, channel, "Hello World!")
+react!(client, channel, "😄", m)
 #Now that we've sent a message and reacted to it, both should run.
-MatrixSynchro.sync!(client)
+sync!(client)
 @test textHasRun
 @test reactHasRun
 
@@ -46,34 +50,34 @@ global testmore = false
 global testdigits = false
 global testargs = false
 
-MatrixSynchro.command!(client, "test1") do q::EventInfo
+command!(client, "test1") do q::EventInfo
     global test1 = true
 end
 
-MatrixSynchro.command!(client, "test more", takeExtra = true) do info::EventInfo
+command!(client, "test more", takeExtra = true) do info::EventInfo
     global testmore = true
 end
 
-MatrixSynchro.command!(client, r"test\d+") do info::EventInfo
+command!(client, r"test\d+") do info::EventInfo
     global testdigits = true
 end
 
-MatrixSynchro.command!(client, "alltheargs") do info::EventInfo, a::Int, b::Float64, c::String, d::String, e::MatrixSynchro.User, f::String, g::Bool
+command!(client, "alltheargs") do info::EventInfo, a::Int, b::Float64, c::String, d::String, e::User, f::String, g::Bool
     #check all of the args exist and are the expected values.
     args = [a, b, c, d, e, f, g]
     @test args == [45, 45.4, "first half", "of the test", client.info.ID, "no quotes? No problem.", false]
-    @test typeof.(args) == [Int, Float64, String, String, MatrixSynchro.User, String, Bool]
+    @test typeof.(args) == [Int, Float64, String, String, User, String, Bool]
     global testargs = true
 end
 
 #call the comamnds to check
-MatrixSynchro.sendmessage!(client, channel, "test1")
-MatrixSynchro.sendmessage!(client, channel, "test more with more")
-MatrixSynchro.sendmessage!(client, channel, "test999")
-MatrixSynchro.sendmessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
+sendmessage!(client, channel, "test1")
+sendmessage!(client, channel, "test more with more")
+sendmessage!(client, channel, "test999")
+sendmessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
 
 #and then sync to run the commands.
-MatrixSynchro.sync!(client)
+sync!(client)
 
 #and they should have all run.
 @test test1

@@ -1,4 +1,3 @@
-using HTTP
 import Base: string, show, showerror
 
 struct User
