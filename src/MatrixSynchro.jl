@@ -20,7 +20,7 @@ Event, MessageType,
 # Commands on types
 string, show,
 # state-modifying api commands
-sync!, sendmessage!, react!, on!, run,
+sync!, sendmessage!, editmessage!, react!, on!, run,
 # not-state-modifying api commands
 getrooms, getdisplayname,
 # (typed) commands

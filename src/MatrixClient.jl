@@ -29,7 +29,25 @@ function sendmessage!(client::Client, roomID, msg)
     JSON.parse(String(res.body))["event_id"]
 end
 
-function react!(client::Client, roomID, reaction, eventID)
+function editmessage!(client::Client, roomID, eventID, newContent)
+    res = matrixrequest(client.info, "PUT",
+        "rooms/$roomID/send/m.room.message/$(txnid(client))",
+        Dict(
+            "body" => " * $newContent",
+            "msgtype" => "m.text",
+            "m.new_content" => Dict(
+                "body" => newContent,
+                "msgtype" => "m.text" # Can messages change type?
+            ),
+            "m.relates_to" => Dict(
+                "rel_type" => "m.replace",
+                "event_id" => eventID
+            )))
+    res.status == 200 || throw(MatrixError("Unable to edit message."))
+    JSON.parse(String(res.body))["event_id"]
+end
+
+function react!(client::Client, roomID, eventID, reaction)
     res = matrixrequest(client.info, "PUT",
         "rooms/$roomID/send/m.reaction/$(txnid(client))",
         Dict("m.relates_to" => Dict("event_id" => eventID, "key" => reaction, "rel_type" => "m.annotation")))
@@ -120,13 +138,13 @@ function sync!(client::Client)
 
                 typecallbacks = client.callbacks[type]
                 @debug "Executing $(length(typecallbacks)) callback(s) for $type"
-                eventinfo = EventInfo(client,event["event_id"], type, sender, roomName, event["content"])
+                eventinfo = EventInfo(client, event["event_id"], type, sender, roomName, event["content"])
                 for callback in typecallbacks
                     #Callbacks may error (user code), so wrap in try+catch
                     try
                         callback(eventinfo)
                     catch e
-                        @warn "Callback failed."
+                        @error e
                         if client.errors
                             throw(e)
                         end

@@ -4,44 +4,57 @@ client = Client(readlines("testtoken.txt")..., true, true)
 #Need to insert a channel name in here for the tests to work.
 channel = readlines("testchannel.txt")[1]
 
-# register that getting stuff actually gets stuff
-# GetRooms, GetDisplayName
 
-global eventsShouldRun = false
+on!(client, Event.message) do info::EventInfo
+    @test "should not run on first sync" == ""
+end
+
+sync!(client)
+
+#clear it.
+client.callbacks[Event.message] = []
+
 global textHasRun = false
 global reactHasRun = false
 
 on!(client, Event.message) do info::EventInfo
-    if eventsShouldRun
-        # this test should only run the first time.
-        if !textHasRun
-            @test strip(info.content["body"]) == "Hello World!"
-        end
-        global textHasRun = true
-        
-    else
-        @test "Should not run on first sync" == ""
-    end
+    @test strip(info.content["body"]) == "Hello World!"
+    global textHasRun = true
 end
 
-on!(client, Event.reaction) do info::EventInfo
-    if eventsShouldRun
-        global reactHasRun = true
-        @test info.content["m.relates_to"]["key"]=="😄"
-    else
-        @test "Should not run on first sync" == ""
-    end
+on!(client, Event.reaction) do info::EventInfo  
+    @test info.content["m.relates_to"]["key"]=="😄"
+    global reactHasRun = true
 end
 
-#Even if there are messages received, the handler should not run.
-sync!(client)
-global eventsShouldRun = true
+# Send messages so the test can proceed.
 m = sendmessage!(client, channel, "Hello World!")
-react!(client, channel, "😄", m)
+react!(client, channel, m, "😄")
 #Now that we've sent a message and reacted to it, both should run.
 sync!(client)
 @test textHasRun
 @test reactHasRun
+
+#then remove them for the next test.
+client.callbacks[Event.message] = []
+client.callbacks[Event.reaction] = []
+
+global textFromEdit
+
+on!(client, Event.message) do info::EventInfo
+    @test info.content["m.new_content"]["body"] == "こんにちは世界！"
+    @test info.content["m.relates_to"]["rel_type"] == "m.replace"
+    global textFromEdit = true
+end
+
+# Then check that we can edit the message.
+editmessage!(client, channel, m, "こんにちは世界！")
+sync!(client)
+@test textFromEdit
+
+#then remove it for the remainder.
+client.callbacks[Event.message] = []
+
 
 #then check that commands work
 

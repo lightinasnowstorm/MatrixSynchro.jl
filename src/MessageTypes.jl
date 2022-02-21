@@ -1,5 +1,17 @@
 module MessageType
 const text = "m.text"
+# m.text
+# usually just the 'body' is what we care about
+# body::String
+# msgtype: m.text
+# how edits look:
+# body::String
+# m.newcontent =>
+#       body::String
+#       msgtype: m.text
+# m.relates_to =>
+#       rel_type: m.replace
+#       event_id:: (an event ID)
 const image = "m.image"
 # m.image: Sends an *uploaded image* as a message, eg.
 # info=> 
