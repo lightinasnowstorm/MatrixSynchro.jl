@@ -73,6 +73,13 @@ function editmessage!(client::Client, roomID, eventID, newContent)
     JSON.parse(String(res.body))["event_id"]
 end
 
+function faketyping!(client::Client, roomID, isTyping::Bool = true; duration = 30)
+    # The timeout only appears when typing is true. Again, it is in ms while the argument in the function is in seconds.
+    req = isTyping ? Dict("typing" => true, "timeout" => duration * 1000) : Dict("typing" => false)
+    res = matrixrequest(client.info, "PUT", "rooms/$roomID/typing/$(client.info.ID)", req)
+    res.status == 200 || throw(MatrixError("unable to fake typing"))
+end
+
 """
     react!(client, roomID, eventID, reaction)
 
@@ -213,8 +220,8 @@ Adds a callback for `event` to the client.
 """
 function on!(fn::Function, client::Client, event::String)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
-    if length(fnTakesTheseArgs) ==1 &&
-        (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
+    if length(fnTakesTheseArgs) == 1 &&
+       (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
     else
         throw(ArgumentError("Callbacks must only take one argument of type EventInfo"))
     end
