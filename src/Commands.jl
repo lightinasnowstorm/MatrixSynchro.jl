@@ -1,20 +1,31 @@
 #precedence is from low to high, low check first
+"""
+How much precedence is given to different types of command. Lower is checked earlier.
+More exact commands are preferred over more general ones.
+"""
 module CommandPrecedence
 const exact = 1
 const command_with_params = 2
 const specific_regex = 3
 const command_with_params_and_more = 4
 const command_and_more = 5
+const just_more = 6
 end
 
-function runcmds(eventData::EventInfo)
-    lc = eventData.content["body"]
+"""
+    runcmds(info)
+
+(internal)
+Runs the command most relating to a received message, or none if no commands match.
+"""
+function runcmds(info::EventInfo)
+    lc = info.content["body"]
     @debug "Looking for commands to run."
     # this hurts me inside
-    for (_, invocation) in eventData.client.commandPrecedence
+    for (_, invocation) in info.client.commandPrecedence
         if occursin(invocation, lc)
             @debug "executing command: $invocation"
-            fn = eventData.client.commands[invocation]
+            fn = info.client.commands[invocation]
             argTypes = first(methods(fn)).sig.types[3:end]
             matches = match(invocation, lc)
             args = []
@@ -27,21 +38,33 @@ function runcmds(eventData::EventInfo)
             @debug "Got args, executing."
             # splat the args into the function.
             # If there are no args, no args are sent to it.
-            fn(eventData, args...)
+            fn(info, args...)
             # Once a command has been called, don't need to look for another.
             return
         end
     end
 end
 
-# ! Will be deprecated when commands are merged into Sync!
+# ! Will be deprecated when commands are merged into `sync!`
+"""
+    guaranteecommandevent!(client)
+
+(internal)
+Makes sure that `runcmds` is attached to the message received event handler.
+"""
 function guaranteecommandevent!(client::Client)
     if !haskey(client.callbacks, Event.message) || runcmds ∉ client.callbacks[Event.message]
         on!(runcmds, client, Event.message)
     end
 end
 
-function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int = 999)
+"""
+    addcommand!(command function, client, regex invocation, precedence)
+
+(internal)
+Adds a function as a command.
+"""
+function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int)
     guaranteecommandevent!(client)
     haskey(client.commands, invo) && @warn "redefining $invo"
     client.commands[invo] = fn
@@ -50,6 +73,12 @@ function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int 
     @debug "Added command $invo"
 end
 
+"""
+    neutralizeregexsymbols(str)
+
+(internal)
+Escapes all characters that have a meaning in regex so that a string containing them can be used as a regex that matches itself.
+"""
 function neutralizeregexsymbols(s::String)
     function neutralizeregexchar(c::Char)
         # Escape all special characters with a regex meaning with a backslash.
@@ -62,38 +91,52 @@ function neutralizeregexsymbols(s::String)
     join(map(neutralizeregexchar, collect(s)))
 end
 
-function command!(fn::Function, client::Client, invocation::Regex)
-    fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
-    if fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any
-    else
-        throw(ArgumentError("Command functions must take EventInfo as first parameter"))
-    end
-    if length(fnTakesTheseArgs) > 1
-        throw(ArgumentError("A regex command must not take arguments beyond the EventInfo."))
-    end
-    addcommand!(fn, client, invocation, CommandPrecedence.specific_regex)
+"""
+    command!(function, client, invocation; takeExtra = false)
+
+Creates a command from a function. The arguments that the function takes are used to construct the command's arguments.
+
+`function` - The function to run when the command is invoked.
+
+`client` - The client to add the command to.
+
+`invocation` - The command's "name", that is used to call it by users.
+
+`takeExtra` - Whether the command can have extra text after the end of its arguments.
+"""
+function command!(fn::Function, client::Client, invocation::String; takeExtra::Bool = false)
+    command!(fn, client, Regex(neutralizeregexsymbols(invocation)), takeExtra = takeExtra)
 end
 
-function command!(fn::Function, client::Client, invocation::String; takeExtra::Bool = false)
+function command!(fn::Function, client::Client, invocation::Regex; takeExtra::Bool = false)
     # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
-    invocation = neutralizeregexsymbols(invocation)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
-    #First arg MUST be eventData
+    #First arg MUST be eventInfo
     if fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any
     else
         throw(ArgumentError("Command functions must take EventInfo as first parameter"))
     end
 
     #determine precedence level
+    isPlain = occursin(invocation,invocation.pattern)
+    hasArgs = length(fnTakesTheseArgs) > 1
     precedence = Dict{Tuple,Int}(
-        (false, false) => CommandPrecedence.exact,
-        (false, true) => CommandPrecedence.command_and_more,
-        (true, false) => CommandPrecedence.command_with_params,
-        (true, true) => CommandPrecedence.command_with_params_and_more
-    )[(length(fnTakesTheseArgs) == 1, takeExtra)]
+        # Neither args or extra.
+        (false, false, false) => CommandPrecedence.specific_regex,
+        (true, false, false) => CommandPrecedence.exact,
+        # These have args but no extra.
+        (true, true, false) => CommandPrecedence.command_with_params,
+        (false, true, false) => CommandPrecedence.command_with_params_and_more,
+        # Args and extra.
+        (true, true, true) => CommandPrecedence.command_and_more,
+        (false, true, true) => CommandPrecedence.command_and_more,
+        # Just extra, no args.
+        (true, false, true) => CommandPrecedence.just_more,
+        (false, false, true) => CommandPrecedence.just_more
+    )[(isPlain, hasArgs, takeExtra)]
 
-    invoregexbuilder = [invocation]
+    invoregexbuilder = [invocation.pattern]
 
     p = 1
     # For each of the other arguments of the function

@@ -1,4 +1,6 @@
 using MatrixSynchro
 using Test
 
-include("fulltests.jl")
+@testset "MatrixSynchro" begin
+    include("fulltests.jl")
+end

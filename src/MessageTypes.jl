@@ -1,24 +1,50 @@
+"""
+The different types of `Event.message` that the bot can receive:
+text and image
+"""
 module MessageType
+
+"""
+A text message in a channel.
+This can either be a new message sent, or an edit to an existing message.
+
+Format of `EventInfo.content`:
+
+New Message:
+
+    content =>
+        msgtype = "m.text"
+        body::String
+
+Edited Message:
+
+    content =>
+        msgtype = "m.text"
+        body::String
+        m.newcontent =>
+            msgtype = "m.text"
+            body::String
+        m.relates_to =>
+            rel_type = "m.replace"
+            event_id (Matrix Event ID)
+"""
 const text = "m.text"
-# m.text
-# usually just the 'body' is what we care about
-# body::String
-# msgtype: m.text
-# how edits look:
-# body::String
-# m.newcontent =>
-#       body::String
-#       msgtype: m.text
-# m.relates_to =>
-#       rel_type: m.replace
-#       event_id:: (an event ID)
+
+"""
+A message with an image in a channel. This is only an image, no text.
+
+Format of `EventInfo.content`:
+
+    content =>
+        msgtype = "m.image"
+        url::String = max://matrix.org/[image ID]
+        info =>
+            h::Int (Height)
+            w::Int (Width)
+            size::Int (Size of image in bytes)
+            mimetype::String
+            xyz.amorgan.blurhash::String (This is a blurhash that generates the blur)
+"""
 const image = "m.image"
-# m.image: Sends an *uploaded image* as a message, eg.
-# info=> 
-#       h::Int
-#       w::Int
-#       size::Int (Size of image in bytes)
-#       mimetype
-#       xyz.amorgan.blurhash    (I assume this generates the blur. TODO: learn what this is if I ever want to send images.)
-# url => mxc://matrix.org/[image ID]
+
 end

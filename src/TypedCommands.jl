@@ -16,6 +16,13 @@ const typeRegexes = Dict{Type,Union{String,Array{String}}}(
     User => "@\\w+:[a-zA-z-]+\\.[a-zA-z-\\.]+"
 )
 
+"""
+    argparse(type, string)
+
+Returns `string` converted to `type`.
+Used to convert text that corresponds to the arguments into the correct types
+for calling the command function.
+"""
 function argparse(_::Type{Bool}, s::AbstractString)
     l = lowercase(string(s))
     if l ∈ ["true", "yes"]
@@ -54,6 +61,11 @@ for typ in keys(typeRegexes)
 end
 
 # String needs a special function because it has quotes around the capture group.
+"""
+    typeregex(type, name)
+
+Returns a named regex group that captures `type`. Used for capturing typed command arguments in text.
+"""
 function typeregex(_::Type{String}, name::String)
     "\"?(?<$name>[^\"]+)\"?"
 end

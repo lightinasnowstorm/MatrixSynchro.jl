@@ -1,6 +1,20 @@
 # Not sure what version would be best to use.
 const matrixBaseURL = "/_matrix/client/r0/"
 
+"""
+    matrixrequest(info, func, endpoint, body = Dict())
+
+(internal)
+Sends a request to the Matrix homeserver.
+
+`info` - Authentication information for the request.
+
+`fun` - the HTTP function that the request uses.
+
+`endpoint` - the endpoint to request to, after /_matrix/client/r0/
+
+`body` - body for the request, sent as JSON
+"""
 function matrixrequest(info::AccessInfo, func::String, endpoint::String, body = Dict())
     # Success or failure, just send the result back to the calling function:
     # It gets to deal with what went wrong.
@@ -15,6 +29,12 @@ function matrixrequest(info::AccessInfo, func::String, endpoint::String, body = 
     end
 end
 
+"""
+    txnid(client)
+
+(internal)
+Generates a unique transaction ID for the specified client.
+"""
 function txnid(client::Client)
     "m$(Int(1000*datetime2unix(now()))).$(client.changyThing.reqID+=1)"
 end
@@ -29,6 +49,12 @@ function sendmessage!(client::Client, roomID, msg)
     JSON.parse(String(res.body))["event_id"]
 end
 
+"""
+    editmessage!(client, roomID, eventID, newContent)
+
+Changes the content of the message referred to by `eventID` to `new_content`.
+`roomID` is the channel that the message to edit is in.
+"""
 function editmessage!(client::Client, roomID, eventID, newContent)
     res = matrixrequest(client.info, "PUT",
         "rooms/$roomID/send/m.room.message/$(txnid(client))",
@@ -47,6 +73,12 @@ function editmessage!(client::Client, roomID, eventID, newContent)
     JSON.parse(String(res.body))["event_id"]
 end
 
+"""
+    react!(client, roomID, eventID, reaction)
+
+Adds `reaction` to the reactions on the message referred to by `eventID`.
+`roomID` is the channel that the message to react to is in.
+"""
 function react!(client::Client, roomID, eventID, reaction)
     res = matrixrequest(client.info, "PUT",
         "rooms/$roomID/send/m.reaction/$(txnid(client))",
@@ -54,6 +86,12 @@ function react!(client::Client, roomID, eventID, reaction)
     res.status == 200 || throw(MatrixError("unable to add reaction"))
 end
 
+
+"""
+    getrooms(info|client)
+
+Gets all rooms that the bot user is in.
+"""
 function getrooms(info::AccessInfo)
     res = matrixrequest(info, "GET", "joined_rooms")
     res.status ≠ 200 && throw(MatrixError("unable to get rooms"))
@@ -65,6 +103,11 @@ function getrooms(client::Client)
     getrooms(client.info)
 end
 
+"""
+    getdisplayname(info|client, userID)
+
+Gets the current display name for the user specified by `userID`
+"""
 function getdisplayname(info::AccessInfo, userID)
     res = matrixrequest(info, "GET", "profile/$userID/displayname")
     res.status ≠ 200 && throw(MatrixError("no such user."))
@@ -76,13 +119,21 @@ function getdisplayname(client::Client, userID)
     getdisplayname(client.info, userID)
 end
 
-function sync!(client::Client)
+
+"""
+    sync!(client, timeout = 30)
+
+Gets events from the homeserver and executes callbacks and commands on the events received.
+Takes `timeout` seconds to time out if no events are received.
+"""
+function sync!(client::Client, timeout::Int = 30)
     # options have to be in URI format
     hasSyncToken = client.changyThing.syncToken ≠ ""
     options = ["filter=0", "full_state=false"]
     # Timeout is 30s with a sync token, 10m without.
     if hasSyncToken
-        push!(options, "timeout=30000")
+        # the timeout passed to the function is in seconds, but the matrix api wants milliseconds
+        push!(options, "timeout=$(timeout*1000)")
         push!(options, "since=$(client.changyThing.syncToken)")
     else
         push!(options, "timeout=600000")
@@ -130,7 +181,6 @@ function sync!(client::Client)
         if sender ≠ client.info.ID || client.testing
             # Check if there is a callback for the event type.
             if (haskey(client.callbacks, type))
-                # TODO: refactor this out to a validation method for each type of event.
                 if type == Event.message && !haskey(event["content"], "body")
                     @warn "Invalid message..."
                     continue
@@ -151,14 +201,23 @@ function sync!(client::Client)
                     end
                 end
             end
-            # TODO: more tighly integrate commands in here instead of having them rely on callbacks.
         end
     end
     @debug "end sync for loop"
 end
 
+"""
+    on!(function, client, event)
+
+Adds a callback for `event` to the client.
+"""
 function on!(fn::Function, client::Client, event::String)
-    # TODO: validate the function?
+    fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
+    if length(fnTakesTheseArgs) ==1 &&
+        (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
+    else
+        throw(ArgumentError("Callbacks must only take one argument of type EventInfo"))
+    end
     if haskey(client.callbacks, event)
         push!(client.callbacks[event], fn)
     else
@@ -166,9 +225,13 @@ function on!(fn::Function, client::Client, event::String)
     end
 end
 
-function run(client::Client, timeout::Int = 0)
+"""
+    run(client, timeout = 30)
+
+Infinitely listens for and reacts to events with the specified client. `timeout` is the timeout to use with `sync!`(@ref)
+"""
+function run(client::Client, timeout::Int = 30)
     while true
-        sync!(client)
-        sleep(timeout)
+        sync!(client, timeout)
     end
 end

@@ -4,7 +4,6 @@ using HTTP
 using JSON
 using Dates
 
-
 # these have to be in this order
 include("Types.jl")
 include("Events.jl")
