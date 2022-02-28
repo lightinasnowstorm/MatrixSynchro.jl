@@ -37,7 +37,8 @@ Format of `EventInfo.content`:
 
     content =>
         msgtype = "m.image"
-        url::String = max://matrix.org/[image ID]
+        body::String (The filename of the image)
+        url::String = mxc://homeserver/[image ID]
         info =>
             h::Int (Height)
             w::Int (Width)
@@ -47,4 +48,27 @@ Format of `EventInfo.content`:
 """
 const image = "m.image"
 
+"""
+A message with a video in a channel. There is no text in the message.
+
+Format of `EventInfo.content`:
+
+    content =>
+        msgtype = "m.video"
+        body::String (Filename of the video)
+        url::String = mxc://homeserver/[video ID]
+        info =>
+            h::Int (Height)
+            w::Int (Width)
+            size::Int (Size of video in bytes)
+            mimetype::String
+            xyz.amorgan.blurhash::String (This is a blurhash that generates the blur)
+            thumbnail_url::String = mxc://homeserver/[image ID]
+            thumbnail_info =>
+                h::Int (Height)
+                w::Int (Width)
+                size::Int (Size of image in bytes)
+                mimetype::String
+"""
+const video = "m.video"
 end

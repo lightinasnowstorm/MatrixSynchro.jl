@@ -57,6 +57,24 @@ function sendmessage!(client::Client, roomID, msg)
 end
 
 """
+    sendformattedmessage(client, roomID, message)
+
+Sends a message with Matrix's custom HTML formatting.
+"""
+function sendformattedmessage!(client::Client, roomID, msg)
+    res = matrixrequest(client.info,
+    "PUT",
+    "rooms/$roomID/send/m.room.message/$(txnid(client))",
+    Dict(
+        "body"=>msg,
+        "msgtype"=>"m.text",
+        "format"=> "org.matrix.custom.html",
+        "formatted_body"=>msg
+    ))
+    JSON.parse(String(res.body))["event_id"]
+end
+
+"""
     editmessage!(client, roomID, eventID, newContent)
 
 Changes the content of the message referred to by `eventID` to `new_content`.
@@ -96,7 +114,7 @@ function reply!(client::Client, info::EventInfo, reply::String)
         "body" => "> <$(info.sender)> $replystring\n\n$reply",
         "format" => "org.matrix.custom.html",
         "msgtype" => "m.text",
-        "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.channel)/$(info.eventID)?via=matrix.org\">In reply to </a>" *
+        "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.channel)/$(info.eventID)\">In reply to </a>" *
                             "<a> href=\"https://matrix.to/#/$(info.sender)\">$(info.sender)</a> $replystring</blockquote></mx-reply>$reply",
         "m.relates_to" => Dict(
             "m.in_reply_to" => Dict(
@@ -170,6 +188,40 @@ function getdisplayname(client::Client, userID)
     getdisplayname(client.info, userID)
 end
 
+"""
+    isvalid(event)
+
+Checks if an event has everything it should.
+"""
+function isvalid(event)
+    t=event["type"]
+    haskey(event,"content") || return false
+    content = event["content"]
+    if t==Event.message
+        msgt = content["msgtype"]
+        if msgt == MessageType.text
+            haskey(content, "body")
+        elseif msgt == MessageType.image
+            haskey(content, "body") && haskey(content, "url")
+        elseif msgt == MessageType.video
+            haskey(content, "body") && haskey(content, "url")
+        else
+            false
+        end
+    elseif t==Event.reaction
+        haskey(content, "m.relates_to") &&
+            haskey(content["m.relates_to"], "key") &&
+            haskey(content["m.relates_to"], "event_id")
+    elseif t==Event.member_update
+        haskey(content, "avatar_url") && haskey(content, "displayname")
+    elseif t==Event.room_name_change
+        haskey(content, "name")
+    elseif t==Event.room_avatar_change
+        haskey(content, "url")
+    else
+        false
+    end
+end
 
 """
     sync!(client, timeout = 30)
@@ -232,7 +284,7 @@ function sync!(client::Client, timeout::Int = 30)
         if sender ≠ client.info.ID || client.testing
             # Check if there is a callback for the event type.
             if (haskey(client.callbacks, type))
-                if type == Event.message && !haskey(event["content"], "body")
+                if !isvalid(event)
                     @warn "Invalid message..."
                     continue
                 end
