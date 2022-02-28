@@ -32,6 +32,7 @@ end
     # Send messages so the test can proceed.
     m = sendmessage!(client, channel, "Hello World!")
     react!(client, channel, m, "😄")
+    sleep(5)
     #Now that we've sent a message and reacted to it, both should run.
     sync!(client)
     @test textHasRun
@@ -51,6 +52,7 @@ end
 
     # Then check that we can edit the message.
     editmessage!(client, channel, m, "こんにちは世界！")
+    sleep(5)
     sync!(client)
     @test textFromEdit
 

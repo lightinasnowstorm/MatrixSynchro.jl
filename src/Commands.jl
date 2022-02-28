@@ -18,29 +18,37 @@ end
 (internal)
 Runs the command most relating to a received message, or none if no commands match.
 """
-function runcmds(info::EventInfo)
+function runcmds(client::Client, info::EventInfo)
     lc = info.content["body"]
     @debug "Looking for commands to run."
     # this hurts me inside
-    for (_, invocation) in info.client.commandPrecedence
-        if occursin(invocation, lc)
-            @debug "executing command: $invocation"
-            fn = info.client.commands[invocation]
-            argTypes = first(methods(fn)).sig.types[3:end]
-            matches = match(invocation, lc)
-            args = []
-            p = 1
-            for a in argTypes
-                # Add parsed args to the args.
-                push!(args, argparse(a, matches["p$p"]))
-                p += 1
+    #need to run this in try-catch because commands are user-provided code that can error.
+    try
+        for (_, invocation) in client.commandPrecedence
+            if occursin(invocation, lc)
+                @debug "executing command: $invocation"
+                fn = client.commands[invocation]
+                argTypes = first(methods(fn)).sig.types[3:end]
+                matches = match(invocation, lc)
+                args = []
+                p = 1
+                for a in argTypes
+                    # Add parsed args to the args.
+                    push!(args, argparse(a, matches["p$p"]))
+                    p += 1
+                end
+                @debug "Got args, executing."
+                # splat the args into the function.
+                # If there are no args, no args are sent to it.
+                fn(info, args...)
+                # Once a command has been called, don't need to look for another.
+                return
             end
-            @debug "Got args, executing."
-            # splat the args into the function.
-            # If there are no args, no args are sent to it.
-            fn(info, args...)
-            # Once a command has been called, don't need to look for another.
-            return
+        end
+    catch e
+        @warn "A command errored"
+        if client.errors
+            throw(e)
         end
     end
 end
@@ -105,7 +113,7 @@ function command!(fn::Function, client::Client, invocation::Regex; takeExtra::Bo
     end
 
     #determine precedence level
-    isPlain = occursin(invocation,invocation.pattern)
+    isPlain = occursin(invocation, invocation.pattern)
     hasArgs = length(fnTakesTheseArgs) > 1
     precedence = Dict{Tuple,Int}(
         # Neither args or extra.

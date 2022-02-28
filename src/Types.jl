@@ -95,8 +95,6 @@ end
 
 Information about a triggered event.
 
-`client` - The client that received the event.
-
 `eventID` - The Matrix event ID for this event.
 
 `type` - Type of the event. See `Event` for the different types of events.
@@ -109,7 +107,6 @@ Information about a triggered event.
 See `Event` and each of the event types within.
 """
 struct EventInfo
-    client::Client
     eventID::String
     type::String
     sender::String

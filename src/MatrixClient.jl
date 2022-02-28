@@ -275,8 +275,7 @@ function sync!(client::Client, timeout::Int = 30)
     for (roomName, roomData) in rooms, event in roomData["timeline"]["events"]
         @debug "In room $roomName on an event"
 
-        sender = event["sender"]
-        type = event["type"]
+
 
         @debug event
 
@@ -285,12 +284,13 @@ function sync!(client::Client, timeout::Int = 30)
             @warn "Invalid message..."
             continue
         end
+        sender = event["sender"]
         if sender ≠ client.info.ID || client.testing
-            
-            eventinfo = EventInfo(client, event["event_id"], type, sender, roomName, event["content"])
+            type = event["type"]
+            eventinfo = EventInfo(event["event_id"], type, sender, roomName, event["content"])
             runCallbacks(client, eventinfo)
             if type==Event.message
-                runcmds(eventinfo)
+                runcmds(client, eventinfo)
             end
             
         end
@@ -302,7 +302,7 @@ function runCallbacks(client::Client, event::EventInfo)
     # If there are callbacks, run them.
     if haskey(client.callbacks, event.type)
         typecallbacks = client.callbacks[event.type]
-        @debug "Executing $(length(typecallbacks)) callback(s) for $type"
+        @debug "Executing $(length(typecallbacks)) callback(s) for $(event.type)"
         for callback in typecallbacks
             # Callbacks are user provided code and can error individually:
             # Errors in one callback should not prevent others from running.
