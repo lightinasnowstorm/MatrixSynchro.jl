@@ -6,7 +6,7 @@ Events are split into timeline, state, account_data, and ephemeral events. Only 
 module Event
 """
 A message in a channel.
-See `MessageType`(@ref) for more information about this event
+See `MessageType` for more information about this event
 and what `EventInfo.content` is for it.
 """
 const message = "m.room.message"

@@ -99,7 +99,7 @@ end
     sendmessage!(client, channel, "test999")
     sendmessage!(client, channel, "regexargs Goodbye Dystopia")
     sendmessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
-
+    sleep(5)
     #and then sync to run the commands.
     sync!(client)
 

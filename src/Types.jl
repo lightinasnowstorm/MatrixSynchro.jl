@@ -14,7 +14,7 @@ end
 
 These are the mutable aspects of the connection.
 
-`reqID` is the request ID used in creating `txnid`(@ref)
+`reqID` is the request ID used in creating `txnid`
 
 `syncToken` is passed to the server to receive no events from
 before the time the syncToken represents
@@ -92,18 +92,18 @@ Information about a triggered event.
 
 `eventID` - The Matrix event ID for this event.
 
-`type` - Type of the event. See `Event`(@ref) for the different types of events.
+`type` - Type of the event. See `Event` for the different types of events.
 
 `sender` - The Matrix ID of the user who brought about the event.
 
 `channel` - The channel the event comes from.
 
 `content` - The content of the event. Varies based on event type.
-See `Event`(@ref) and each of the event types within.
+See `Event` and each of the event types within.
 """
 struct EventInfo
     client::Client
-    EventID::String
+    eventID::String
     type::String
     sender::String
     channel::String

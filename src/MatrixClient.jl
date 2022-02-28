@@ -1,3 +1,5 @@
+import Base: run
+
 # Not sure what version would be best to use.
 const matrixBaseURL = "/_matrix/client/r0/"
 
@@ -39,6 +41,11 @@ function txnid(client::Client)
     "m$(Int(1000*datetime2unix(now()))).$(client.changyThing.reqID+=1)"
 end
 
+"""
+    sendmessage(client, roomID, message)
+
+Sends a text message in a channel. Does not support formatting
+"""
 function sendmessage!(client::Client, roomID, msg)
     res = matrixrequest(client.info,
         "PUT",
@@ -73,6 +80,43 @@ function editmessage!(client::Client, roomID, eventID, newContent)
     JSON.parse(String(res.body))["event_id"]
 end
 
+"""
+    reply!(client, info, reply)
+
+Sends a message as a reply to another message, given as as an EventInfo
+"""
+function reply!(client::Client, info::EventInfo, reply::String)
+    #get the "string" to reply to.
+    replystring = if info.content["msgtype"] == MessageType.text
+        info.content["body"]
+    elseif info.content["msgtype"] == MessageType.image
+        "sent an image."
+    end
+    a = Dict(
+        "body" => "> <$(info.sender)> $replystring\n\n$reply",
+        "format" => "org.matrix.custom.html",
+        "msgtype" => "m.text",
+        "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.channel)/$(info.eventID)?via=matrix.org\">In reply to </a>" *
+                            "<a> href=\"https://matrix.to/#/$(info.sender)\">$(info.sender)</a> $replystring</blockquote></mx-reply>$reply",
+        "m.relates_to" => Dict(
+            "m.in_reply_to" => Dict(
+                "event_id" => info.eventID
+            )
+        )
+    )
+
+    matrixrequest(client.info, "PUT", "rooms/$(info.channel)/send/m.room.message/$(txnid(client))", a)
+end
+
+"""
+    faketyping!(client, roomID, typing)
+
+Sends an ephemeral event to activate the typing indicator for the bot.
+
+isTyping - Whether to activate or deactivate the typing indicator.
+
+duration - If activating the typing indicator, how long it will stay active for.
+"""
 function faketyping!(client::Client, roomID, isTyping::Bool = true; duration = 30)
     # The timeout only appears when typing is true. Again, it is in ms while the argument in the function is in seconds.
     req = isTyping ? Dict("typing" => true, "timeout" => duration * 1000) : Dict("typing" => false)
@@ -221,7 +265,7 @@ Adds a callback for `event` to the client.
 function on!(fn::Function, client::Client, event::String)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
     if length(fnTakesTheseArgs) == 1 &&
-       (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
+        (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
     else
         throw(ArgumentError("Callbacks must only take one argument of type EventInfo"))
     end
@@ -235,7 +279,7 @@ end
 """
     run(client, timeout = 30)
 
-Infinitely listens for and reacts to events with the specified client. `timeout` is the timeout to use with `sync!`(@ref)
+Infinitely listens for and reacts to events with the specified client. `timeout` is the timeout to use with `sync!`
 """
 function run(client::Client, timeout::Int = 30)
     while true
