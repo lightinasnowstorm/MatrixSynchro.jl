@@ -45,19 +45,6 @@ function runcmds(info::EventInfo)
     end
 end
 
-# ! Will be deprecated when commands are merged into `sync!`
-"""
-    guaranteecommandevent!(client)
-
-(internal)
-Makes sure that `runcmds` is attached to the message received event handler.
-"""
-function guaranteecommandevent!(client::Client)
-    if !haskey(client.callbacks, Event.message) || runcmds ∉ client.callbacks[Event.message]
-        on!(runcmds, client, Event.message)
-    end
-end
-
 """
     addcommand!(command function, client, regex invocation, precedence)
 
@@ -65,7 +52,6 @@ end
 Adds a function as a command.
 """
 function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int)
-    guaranteecommandevent!(client)
     haskey(client.commands, invo) && @warn "redefining $invo"
     client.commands[invo] = fn
     push!(client.commandPrecedence, (precedence, invo))

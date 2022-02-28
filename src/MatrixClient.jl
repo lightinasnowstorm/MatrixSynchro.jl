@@ -281,32 +281,41 @@ function sync!(client::Client, timeout::Int = 30)
         @debug event
 
         # Don't react to the bot's own messages unless running tests.
+        if !isvalid(event)
+            @warn "Invalid message..."
+            continue
+        end
         if sender ≠ client.info.ID || client.testing
-            # Check if there is a callback for the event type.
-            if (haskey(client.callbacks, type))
-                if !isvalid(event)
-                    @warn "Invalid message..."
-                    continue
-                end
+            
+            eventinfo = EventInfo(client, event["event_id"], type, sender, roomName, event["content"])
+            runCallbacks(client, eventinfo)
+            if type==Event.message
+                runcmds(eventinfo)
+            end
+            
+        end
+    end
+    @debug "end sync for loop"
+end
 
-                typecallbacks = client.callbacks[type]
-                @debug "Executing $(length(typecallbacks)) callback(s) for $type"
-                eventinfo = EventInfo(client, event["event_id"], type, sender, roomName, event["content"])
-                for callback in typecallbacks
-                    #Callbacks may error (user code), so wrap in try+catch
-                    try
-                        callback(eventinfo)
-                    catch e
-                        @error e
-                        if client.errors
-                            throw(e)
-                        end
-                    end
+function runCallbacks(client::Client, event::EventInfo)
+    # If there are callbacks, run them.
+    if haskey(client.callbacks, event.type)
+        typecallbacks = client.callbacks[event.type]
+        @debug "Executing $(length(typecallbacks)) callback(s) for $type"
+        for callback in typecallbacks
+            # Callbacks are user provided code and can error individually:
+            # Errors in one callback should not prevent others from running.
+            try
+                callback(event)
+            catch
+                @error e
+                if client.errors
+                    throw(e)
                 end
             end
         end
     end
-    @debug "end sync for loop"
 end
 
 """
