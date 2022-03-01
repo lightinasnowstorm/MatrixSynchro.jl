@@ -46,31 +46,21 @@ end
 
 Sends a text message in a channel. Does not support formatting
 """
-function sendmessage!(client::Client, roomID, msg)
+function sendmessage!(client::Client, roomID, msg; formatted::Bool = false)
+    body = Dict("body" => msg, "msgtype" => "m.text")
+    if formatted
+        body["format"] = "org.matrix.custom.html"
+        body["formatted_body"] = msg
+    else
+
+    end
     res = matrixrequest(client.info,
         "PUT",
         "rooms/$roomID/send/m.room.message/$(txnid(client))",
-        Dict("body" => msg, "msgtype" => "m.text"))
+        body
+    )
     res.status == 200 || throw(MatrixError("Unable to send message."))
     # return the event ID of the sent message.
-    JSON.parse(String(res.body))["event_id"]
-end
-
-"""
-    sendformattedmessage(client, roomID, message)
-
-Sends a message with Matrix's custom HTML formatting.
-"""
-function sendformattedmessage!(client::Client, roomID, msg)
-    res = matrixrequest(client.info,
-    "PUT",
-    "rooms/$roomID/send/m.room.message/$(txnid(client))",
-    Dict(
-        "body"=>msg,
-        "msgtype"=>"m.text",
-        "format"=> "org.matrix.custom.html",
-        "formatted_body"=>msg
-    ))
     JSON.parse(String(res.body))["event_id"]
 end
 
@@ -80,20 +70,26 @@ end
 Changes the content of the message referred to by `eventID` to `new_content`.
 `roomID` is the channel that the message to edit is in.
 """
-function editmessage!(client::Client, roomID, eventID, newContent)
+function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bool = false)
+    body = Dict(
+        "body" => " * $newContent",
+        "msgtype" => "m.text",
+        "m.new_content" => Dict(
+            "body" => newContent,
+            "msgtype" => "m.text" # Can messages change type?
+        ),
+        "m.relates_to" => Dict(
+            "rel_type" => "m.replace",
+            "event_id" => eventID
+        ))
+    if formatted
+        body["m.new_content"]["format"] = "org.matrix.custom.html"
+        body["m.new_content"]["formatted_body"] = newContent
+    end
     res = matrixrequest(client.info, "PUT",
         "rooms/$roomID/send/m.room.message/$(txnid(client))",
-        Dict(
-            "body" => " * $newContent",
-            "msgtype" => "m.text",
-            "m.new_content" => Dict(
-                "body" => newContent,
-                "msgtype" => "m.text" # Can messages change type?
-            ),
-            "m.relates_to" => Dict(
-                "rel_type" => "m.replace",
-                "event_id" => eventID
-            )))
+        body
+    )
     res.status == 200 || throw(MatrixError("Unable to edit message."))
     JSON.parse(String(res.body))["event_id"]
 end
@@ -194,10 +190,10 @@ end
 Checks if an event has everything it should.
 """
 function isvalid(event)
-    t=event["type"]
-    haskey(event,"content") || return false
+    t = event["type"]
+    haskey(event, "content") || return false
     content = event["content"]
-    if t==Event.message
+    if t == Event.message
         msgt = content["msgtype"]
         if msgt == MessageType.text
             haskey(content, "body")
@@ -208,15 +204,15 @@ function isvalid(event)
         else
             false
         end
-    elseif t==Event.reaction
+    elseif t == Event.reaction
         haskey(content, "m.relates_to") &&
             haskey(content["m.relates_to"], "key") &&
             haskey(content["m.relates_to"], "event_id")
-    elseif t==Event.member_update
+    elseif t == Event.member_update
         haskey(content, "avatar_url") && haskey(content, "displayname")
-    elseif t==Event.room_name_change
+    elseif t == Event.room_name_change
         haskey(content, "name")
-    elseif t==Event.room_avatar_change
+    elseif t == Event.room_avatar_change
         haskey(content, "url")
     else
         false
@@ -289,10 +285,10 @@ function sync!(client::Client, timeout::Int = 30)
             type = event["type"]
             eventinfo = EventInfo(event["event_id"], type, sender, roomName, event["content"])
             runCallbacks(client, eventinfo)
-            if type==Event.message
+            if type == Event.message
                 runcmds(client, eventinfo)
             end
-            
+
         end
     end
     @debug "end sync for loop"
@@ -326,7 +322,7 @@ Adds a callback for `event` to the client.
 function on!(fn::Function, client::Client, event::String)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
     if length(fnTakesTheseArgs) == 1 &&
-        (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
+       (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)
     else
         throw(ArgumentError("Callbacks must only take one argument of type EventInfo"))
     end
