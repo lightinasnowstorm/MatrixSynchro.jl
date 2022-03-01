@@ -56,11 +56,12 @@ end
         )
 
 Simpler constructor:
+
     Client(
         username,
         homeserver,
         token
-    )
+        )
 
 A connection to Matrix using the homeserver in `accessinfo`, with callbacks for events and commands: A bot.
 

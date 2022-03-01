@@ -42,9 +42,13 @@ function txnid(client::Client)
 end
 
 """
-    sendmessage(client, roomID, message)
+    sendmessage(client, roomID, message, formatted=false, emote=false)
 
-Sends a text message in a channel. Does not support formatting
+Sends a text message in a channel.
+
+`format` makes the message uses Matrix's custom HTML message formatting.
+
+`emote` makes the message a /me message
 """
 function sendmessage!(client::Client, roomID, msg; formatted::Bool = false, emote = false)
     type = emote ? MessageType.emote : MessageType.text
@@ -66,12 +70,17 @@ function sendmessage!(client::Client, roomID, msg; formatted::Bool = false, emot
 end
 
 """
-    editmessage!(client, roomID, eventID, newContent)
+    editmessage!(client, roomID, eventID, newContent, formatted=false, emote=false)
+    editmessage!(client, eventinfo, newcontent, formatted=false, emote=false)
 
 Changes the content of the message referred to by `eventID` to `new_content`.
 `roomID` is the channel that the message to edit is in.
+
+`format` makes the new content use Matrix's custom HTML message formatting.
+
+`emote` makes the new content a /me message
 """
-function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bool = false, emote = false)
+function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bool = false, emote::Bool = false)
     type = emote ? MessageType.emote : MessageType.text
     body = Dict(
         "body" => " * $newContent",
@@ -96,12 +105,18 @@ function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bo
     JSON.parse(String(res.body))["event_id"]
 end
 
+function editmessage!(client::Client, info::EventInfo, newContent; formatted::Bool = false, emote::Bool = false)
+    editmessage!(client, info.channel, info.eventID, newContent, formatted = formatted, emote = emote)
+end
+
 """
     reply!(client, info, reply)
 
-Sends a message as a reply to another message, given as as an EventInfo
+Sends a message as a reply to another message, given as as an EventInfo. The reply message is always formatted.
+
+`emote` makes the message a /me message
 """
-function reply!(client::Client, info::EventInfo, reply::String)
+function reply!(client::Client, info::EventInfo, reply::String; emote::Bool = false)
     #get the "string" to reply to.
     replystring = if info.content["msgtype"] == MessageType.text
         info.content["body"]
@@ -111,7 +126,7 @@ function reply!(client::Client, info::EventInfo, reply::String)
     a = Dict(
         "body" => "> <$(info.sender)> $replystring\n\n$reply",
         "format" => "org.matrix.custom.html",
-        "msgtype" => "m.text",
+        "msgtype" => emote ? MessageType.emote : MessageType.text,
         "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.channel)/$(info.eventID)\">In reply to </a>" *
                             "<a> href=\"https://matrix.to/#/$(info.sender)\">$(info.sender)</a> $replystring</blockquote></mx-reply>$reply",
         "m.relates_to" => Dict(
@@ -121,7 +136,27 @@ function reply!(client::Client, info::EventInfo, reply::String)
         )
     )
 
-    matrixrequest(client.info, "PUT", "rooms/$(info.channel)/send/m.room.message/$(txnid(client))", a)
+    res = matrixrequest(client.info, "PUT", "rooms/$(info.channel)/send/m.room.message/$(txnid(client))", a)
+    res.status == 200 || throw(MatrixError("Unable to reply."))
+    JSON.parse(String(res.body))["event_id"]
+end
+
+"""
+    deletemessage!(client, roomid, eventid)
+    deletemessage!(client, eventinfo)
+
+Deletes the message referred to by `eventid` in the room refered to by `roomid`.
+Also works with an `EventInfo` of the message to delete.
+Bots needs permission to delete messages they did not send.
+"""
+function deletemessage!(client::Client, roomID, eventID)
+    res = matrixrequest(client.info, "PUT", "rooms/$roomID/redact/$eventID/$(txnid(client))")
+    res.status == 200 || throw(MatrixError("Unable to delete message"))
+    JSON.parse(String(res.body))["event_id"]
+end
+
+function deletemessage!(client::Client, info::EventInfo)
+    deletemessage!(client, info.channel, info.eventID)
 end
 
 """
@@ -145,9 +180,9 @@ end
 
 """
     react!(client, roomID, eventID, reaction)
+    react!(client, eventinfo, reaction)
 
-Adds `reaction` to the reactions on the message referred to by `eventID`.
-`roomID` is the channel that the message to react to is in.
+Adds `reaction` to the reactions on the message referred to by the event and room ID or by the event info.
 """
 function react!(client::Client, roomID, eventID, reaction)
     res = matrixrequest(client.info, "PUT",
@@ -156,6 +191,9 @@ function react!(client::Client, roomID, eventID, reaction)
     res.status == 200 || throw(MatrixError("unable to add reaction"))
 end
 
+function react!(client::Client, info::EventInfo, reaction)
+    react!(client, info.channel, info.eventID, reaction)
+end
 
 """
     getrooms(info|client)

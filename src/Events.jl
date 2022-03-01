@@ -1,6 +1,5 @@
 """
 This is a collection of the types of events that can be emitted.
-Currently only `message` and `reaction` have `EventInfo.content` documented.
 Events are split into timeline, state, account_data, and ephemeral events. Only timeline events are listened for.
 """
 module Event

@@ -14,15 +14,17 @@ include("Commands.jl")
 
 # Types
 export AccessInfo, EventInfo, User, Client,
-# static string data
-Event, MessageType,
-# Commands on types
-string, show,
-# state-modifying api commands
-sync!, sendmessage!, sendformattedmessage!, editmessage!, react!, faketyping!, reply!, on!, run,
-# not-state-modifying api commands
-getrooms, getdisplayname,
-# (typed) commands
-command!, typeregex, argparse
+    # static string data
+    Event, MessageType,
+    # Commands on types
+    string, show,
+    # state-modifying api commands
+    sync!, react!, faketyping!, on!, run,
+    #messages
+    sendmessage!, editmessage!, reply!, deletemessage!,
+    # not-state-modifying api commands
+    getrooms, getdisplayname,
+    # (typed) commands
+    command!, typeregex, argparse
 
 end

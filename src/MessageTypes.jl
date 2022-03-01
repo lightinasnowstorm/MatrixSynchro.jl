@@ -1,6 +1,6 @@
 """
 The different types of `Event.message` that the bot can receive:
-text and image
+text, emote, image, and video
 """
 module MessageType
 
