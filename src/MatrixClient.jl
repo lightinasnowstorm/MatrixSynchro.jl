@@ -46,8 +46,9 @@ end
 
 Sends a text message in a channel. Does not support formatting
 """
-function sendmessage!(client::Client, roomID, msg; formatted::Bool = false)
-    body = Dict("body" => msg, "msgtype" => "m.text")
+function sendmessage!(client::Client, roomID, msg; formatted::Bool = false, emote = false)
+    type = emote ? MessageType.emote : MessageType.text
+    body = Dict("body" => msg, "msgtype" => type)
     if formatted
         body["format"] = "org.matrix.custom.html"
         body["formatted_body"] = msg
@@ -70,13 +71,14 @@ end
 Changes the content of the message referred to by `eventID` to `new_content`.
 `roomID` is the channel that the message to edit is in.
 """
-function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bool = false)
+function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bool = false, emote = false)
+    type = emote ? MessageType.emote : MessageType.text
     body = Dict(
         "body" => " * $newContent",
-        "msgtype" => "m.text",
+        "msgtype" => type,
         "m.new_content" => Dict(
             "body" => newContent,
-            "msgtype" => "m.text" # Can messages change type?
+            "msgtype" => type
         ),
         "m.relates_to" => Dict(
             "rel_type" => "m.replace",
@@ -133,7 +135,10 @@ duration - If activating the typing indicator, how long it will stay active for.
 """
 function faketyping!(client::Client, roomID, isTyping::Bool = true; duration = 30)
     # The timeout only appears when typing is true. Again, it is in ms while the argument in the function is in seconds.
-    req = isTyping ? Dict("typing" => true, "timeout" => duration * 1000) : Dict("typing" => false)
+    req = Dict("typing" => isTyping)
+    if isTyping
+        req["timeout"] = 1000 * duration
+    end
     res = matrixrequest(client.info, "PUT", "rooms/$roomID/typing/$(client.info.ID)", req)
     res.status == 200 || throw(MatrixError("unable to fake typing"))
 end

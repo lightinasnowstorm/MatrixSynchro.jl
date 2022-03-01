@@ -21,14 +21,41 @@ Edited Message:
     content =>
         msgtype = "m.text"
         body::String
-        m.newcontent =>
-            msgtype = "m.text"
+        m.newcontent => (newcontent is identical to what is under content directly)
+            msgtyp e= "m.text"
             body::String
         m.relates_to =>
             rel_type = "m.replace"
             event_id (Matrix Event ID)
 """
 const text = "m.text"
+
+
+"""
+A /me message.
+
+Format of `EventInfo.content`: (It's the same as `text`)
+
+New Message:
+
+    content =>
+        msgtype = "m.emote"
+        body::String
+
+Edited Message:
+
+    content =>(newcontent is identical to what is under content directly)
+        msgtype = "m.emote"
+        body::String
+        m.newcontent =>
+            msgtype::String
+            body::String
+        m.relates_to =>
+            rel_type = "m.replace"
+            event_id (Matrix Event ID)
+
+"""
+const emote = "m.emote"
 
 """
 A message with an image in a channel. This is only an image, no text.
