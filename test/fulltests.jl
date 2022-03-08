@@ -1,7 +1,7 @@
 # make an EventInfo,
 # allowing the bot itself to trigger events and commands, and to error if there is a failure.
-client = Client(readlines("testtoken.txt")..., true, true)
-#Need to insert a room name in here for the tests to work.
+client = Client(readlines("testtoken.txt")..., errors = true, testing = true)
+# Need to insert a room name in here for the tests to work.
 room = readlines("testroom.txt")[1]
 
 @testset "No first sync" begin
@@ -11,7 +11,7 @@ room = readlines("testroom.txt")[1]
 
     sync!(client)
 
-    #clear it.
+    # clear it.
     client.callbacks[Event.message] = []
 end
 
@@ -33,12 +33,12 @@ end
     m = sendmessage!(client, room, "Hello World!")
     react!(client, room, m, "😄")
     sleep(5)
-    #Now that we've sent a message and reacted to it, both should run.
+    # Now that we've sent a message and reacted to it, both should run.
     sync!(client)
     @test textHasRun
     @test reactHasRun
 
-    #then remove them for the next test.
+    # then remove them for the next test.
     client.callbacks[Event.message] = []
     client.callbacks[Event.reaction] = []
 
@@ -56,12 +56,12 @@ end
     sync!(client)
     @test textFromEdit
 
-    #then remove it for the remainder.
+    # then remove it for the remainder.
     client.callbacks[Event.message] = []
 end
 
 
-#then check that commands work
+# then check that commands work
 
 @testset "commands" begin
     global test1 = false
@@ -88,24 +88,26 @@ end
     end
 
     command!(client, "alltheargs") do info::EventInfo, a::Int, b::Float64, c::String, d::String, e::User, f::String, g::Bool
-        #check all of the args exist and are the expected values.
+        # check all of the args exist and are the expected values.
         args = [a, b, c, d, e, f, g]
         @test args == [45, 45.4, "first half", "of the test", client.info.ID, "no quotes? No problem.", false]
         @test typeof.(args) == [Int, Float64, String, String, User, String, Bool]
         global testargs = true
     end
 
-    #call the comamnds to check
+    # call the comamnds to check
     sendmessage!(client, room, "test1")
     sendmessage!(client, room, "test more with more")
     sendmessage!(client, room, "test999")
     sendmessage!(client, room, "regexargs Goodbye Dystopia")
     sendmessage!(client, room, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
     sleep(5)
-    #and then sync to run the commands.
+    # and then sync to run the commands.
     sync!(client)
+    #and then wait, because async command.
+    sleep(5)
 
-    #and they should have all run.
+    # and they should have all run.
     @test test1
     @test testmore
     @test testdigits

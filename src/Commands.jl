@@ -1,4 +1,4 @@
-#precedence is from low to high, low check first
+# precedence is from low to high, low check first
 """
 How much precedence is given to different types of command. Lower is checked earlier.
 More exact commands are preferred over more general ones.
@@ -13,44 +13,57 @@ const just_more = 6
 end
 
 """
-    runcmds(info)
+    runcmds(client, info)
 
 (internal)
 Runs the command most relating to a received message, or none if no commands match.
 """
-function runcmds(client::Client, info::EventInfo)
+function runcmd(client::Client, info::EventInfo)
     messagebody = info.content["body"]
     @debug "Looking for commands to run."
-    # need to run this in try-catch because commands are user-provided code that can error.
+    cmdindex = findfirst(c -> occursin(c.functionNameMatch, messagebody), client.commands)
+    if cmdindex === nothing
+        #There is no command, return.
+        return
+    end
+    cmd = client.commands[cmdindex]
+    @debug "Found a command to run, looking a valid subcommand..."
+    subcmdindex = findfirst(sc -> occursin(sc.invocation, messagebody), cmd.calls)
+    if subcmdindex === nothing
+        # There is no valid call, give the help.
+        sendmessage!(client, info.room, cmd.help)
+        # and then return.
+        return
+    end
+    @debug "Found a subcommand to run, executing..."
+    subcmd = cmd.calls[subcmdindex]
+    @async runsubcmd(client, info, cmd, subcmd)
+end
+
+"""
+    runsubcmd(client, info, subcmd)
+
+(internal)
+Runs a specified subcommand on a message.
+"""
+function runsubcmd(client::Client, info::EventInfo, cmd::Command, subcmd::SubCommand)
     try
-        for cmd in client.commands
-            if occursin(cmd.functionNameMatch, messagebody)
-                @debug "Matches function: $(cmd.functionNameMatch), looking for subcommand match..."
-                for subcmd in cmd.calls
-                    @debug "Found subcommand match"
-                    if occursin(subcmd.invocation, messagebody)
-                        matches = match(subcmd.invocation, messagebody)
-                        args = []
-                        p = 1
-                        for a in subcmd.argtypes[2:end]
-                            # Add parsed args to the args.
-                            push!(args, argparse(a, matches["p$p"]))
-                            p += 1
-                        end
-                        @debug "Got args, executing."
-                        subcmd.fn(info, args...)
-                        #once a command has been executed, stop looking.
-                        return
-                    end
-                end
-                # Should send some sort of notice that it failed.
-                sendmessage!(client, info.room, cmd.help)
-                # don't keep looking.
-                return
-            end
+        messagebody = info.content["body"]
+        # need to run this in try-catch because commands are user-provided code that can error.
+        matches = match(subcmd.invocation, messagebody)
+        args = []
+        p = 1
+        for a in subcmd.argtypes[2:end]
+            # Add parsed args to the args.
+            push!(args, argparse(a, matches["p$p"]))
+            p += 1
         end
+        @debug "Got args, executing."
+        subcmd.fn(info, args...)
     catch e
-        @warn "A command errored"
+        @warn "Executing $(subcmd.invocation) for $(info.sender) failed!"
+        # send failure message.
+        sendmessage!(client, info.room, cmd.onfailure)
         if client.errors
             throw(e)
         end
@@ -95,9 +108,19 @@ function command!(
     takeExtra::Bool = false,
     friendlyname::String = "",
     description::String = "A command.",
-    help::String = "そんなのないよ？"
+    help::String = "そんなのないよ？",
+    onfail::String = "Command failed."
 )
-    command!(fn, client, Regex(neutralizeregexsymbols(invocation)), takeExtra = takeExtra, friendlyname = friendlyname, description = description, help = help)
+    command!(
+        fn,
+        client,
+        Regex(neutralizeregexsymbols(invocation)),
+        takeExtra = takeExtra,
+        friendlyname = friendlyname,
+        description = description,
+        help = help,
+        onfail = onfail
+    )
 end
 
 function command!(
@@ -107,18 +130,19 @@ function command!(
     takeExtra::Bool = false,
     friendlyname::String = "",
     description::String = "A command.",
-    help::String = "そんなのないよ？"
+    help::String = "そんなのないよ？",
+    onfail::String = "Command failed."
 )
     # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
-    #First arg MUST be eventInfo
+    # First arg MUST be eventInfo
     if fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any
     else
         throw(ArgumentError("Command functions must take EventInfo as first parameter"))
     end
 
-    #determine precedence level
+    # determine precedence level
     isPlain = occursin(invocation, invocation.pattern)
     hasArgs = length(fnTakesTheseArgs) > 1
     precedence = Dict{Tuple,Int}(
@@ -150,27 +174,35 @@ function command!(
     # Without take extra, it has $ to make sure it ends there.
     invoregex = Regex("^$(join(invoregexbuilder,"\\s+"))$(takeExtra ?  "" : "\$")", "i")
 
-    #function name is a regex to match the first part.
+    # function name is a regex to match the first part.
     fnname = Regex("^$(invocation.pattern)", "i")
-    #advanced stuff
+    # advanced stuff
     subcmd = SubCommand(precedence, invoregex, collect(fnTakesTheseArgs), fn)
-    #check if exists
+    # check if exists
     possi = filter(x -> x.functionNameMatch == fnname, client.commands)
     if isempty(possi)
-        #add a new command (without the string extras, those come later) and sort! the commands.
-        prec = isPlain ? 1 : 2 #this is stupid, but, reduce precedence among Commands and make it the usual system among subcommands
+        # add a new command (without the string extras, those come later) and sort! the commands.
+        prec = isPlain ? 1 : 2 # this is stupid, but, reduce precedence among Commands and make it the usual system among subcommands
         na = isempty(friendlyname) ? invocation.pattern : friendlyname
-        cmd = Command(prec, fnname, [subcmd], na, description, help)
+        cmd = Command(prec, fnname, [subcmd], na, description, help, onfail)
         push!(client.commands, cmd)
         sort!(client.commands, by = x -> x.precedence)
         @debug "Added command $fnname with subcommand $invoregex"
     else
         cmd = first(possi)
-        push!(cmd.calls, subcmd)
-        #need to sort the subcommands
-        sort!(cmd.calls, by = x -> x.precedence)
+        # check if one exists
+        possible_exist = findfirst(c -> c.invocation = invoregex)
+        if possible_exist === nothing
+            push!(cmd.calls, subcmd)
+            # need to sort the subcommands
+            sort!(cmd.calls, by = x -> x.precedence)
+        else
+            # if the command already exists, it's already in the right precedence level:
+            # Just replace and notify, no need to re-sort.
+            cmd.calls[possible_exist] = subcmd
+            @warn "Replacing subcommand $invoregex of command $fnname"
+        end
+
         @debug "Added subcommand $invoregex to command $fnname"
     end
-
-    #addcommand!(fn, client, invoregex, precedence)
 end

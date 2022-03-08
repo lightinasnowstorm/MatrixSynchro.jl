@@ -7,6 +7,7 @@ Represents a matrix user, holding their ID in the form @username:homeserver
 """
 struct User
     ID::String
+    User(s::String) = occursin(r"@[\w.\-=\/]+:[a-zA-z-]+\.[a-zA-z-\.]+", s) ? new(s) : throw(ArgumentError("Not a valid form for a user!"))
 end
 
 """
@@ -34,7 +35,8 @@ end
 
         friendlyname,
         description,
-        help
+        help,
+        onfailure
     )
 
 A command.
@@ -47,6 +49,7 @@ struct Command
     friendlyname::String
     description::String
     help::String
+    onfailure::String
 end
 
 """
@@ -125,8 +128,6 @@ struct Client
     changyThing::ConnectionChangyThing
     callbacks::Dict{String,Array{Function}}
     commands::Array{Command}
-    #commands::Dict{Regex,Function}
-    #commandPrecedence::Array{Tuple{Int,Regex}}
     errors::Bool
     testing::Bool
 end
@@ -174,7 +175,7 @@ end
 Removes the protocol from a url.
 """
 function stripprotocol(serverURL)
-    #No protocol:// in url
+    # No protocol:// in url
     modURL = serverURL
     if occursin("://", serverURL)
         modURL = modURL[findfirst("://", modURL)[3]+1:end]
@@ -194,6 +195,6 @@ end
 
 AccessInfo(username::String, serverURL::String, accessToken::String) = AccessInfo(User("@$username:$serverURL"), stripprotocol(serverURL), accessToken)
 
-Client(info::AccessInfo, errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), [], errors, testing)
+Client(info::AccessInfo; errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), [], errors, testing)
 
-Client(username::String, serverURL::String, accessToken::String, errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors, testing)
+Client(username::String, serverURL::String, accessToken::String; errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors=errors, testing=testing)

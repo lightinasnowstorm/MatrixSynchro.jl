@@ -13,7 +13,7 @@ const typeRegexes = Dict{Type,Union{String,Array{String}}}(
     Integer => "\\d+",
     AbstractFloat => "\\d+(\\.\\d+)?",
     Bool => "true|false|yes|no",
-    User => "@\\w+:[a-zA-z-]+\\.[a-zA-z-\\.]+"
+    User => "@[\\w\\.\\=\\/]+:[a-zA-z-]+\\.[a-zA-z-\\.]+" # all characters allowed in username by element
 )
 
 """

@@ -20,7 +20,7 @@ export AccessInfo, EventInfo, User, Client,
     string, show,
     # state-modifying api commands
     sync!, react!, faketyping!, on!, run,
-    #messages
+    # messages
     sendmessage!, editmessage!, reply!, deletemessage!,
     # not-state-modifying api commands
     getrooms, getdisplayname, getavatar,

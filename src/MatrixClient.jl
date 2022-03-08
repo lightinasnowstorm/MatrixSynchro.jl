@@ -119,7 +119,7 @@ Sends a message as a reply to another message, given as as an EventInfo. The rep
 `emote` makes the message a /me message
 """
 function reply!(client::Client, info::EventInfo, reply::String; emote::Bool = false)
-    #get the "string" to reply to.
+    # get the "string" to reply to.
     replystring = if info.content["msgtype"] == MessageType.text
         info.content["body"]
     elseif info.content["msgtype"] == MessageType.image
@@ -218,7 +218,7 @@ end
 
 Gets the current display name for the user specified by `userID`
 """
-function getdisplayname(info::AccessInfo, userID)
+function getdisplayname(info::AccessInfo, userID::User)
     res = matrixrequest(info, "GET", "profile/$userID/displayname")
     res.status ≠ 200 && throw(MatrixError("no such user."))
     jsonRes = JSON.parse(String(res.body))
@@ -226,26 +226,26 @@ function getdisplayname(info::AccessInfo, userID)
     jsonRes["displayname"] # for some nonexistent users t
 end
 
-function getdisplayname(client::Client, userID)
-    getdisplayname(client.info, userID)
-end
+getdisplayname(info::AccessInfo, user::String) = getdisplayname(info, User(user))
+getdisplayname(client::Client, user::User) = getdisplayname(client.info, user)
+getdisplayname(client::Client, user::String) = getdisplayname(client.info, User(user))
 
 """
     getavatar(info|client, userID)
 
 Gets the matrix URL for the avatar of the user specified by `userID`
 """
-function getavatar(info::AccessInfo, userID)
-    res = matrixrequest(info, "GET", "profile/$userID")
+function getavatar(info::AccessInfo, user::User)
+    res = matrixrequest(info, "GET", "profile/$user")
     res.status ≠ 200 && throw(MatrixError("no such user."))
     jsonRes = JSON.parse(String(res.body))
     isempty(jsonRes) && throw(MatrixError("Could not get data for user $userID"))
     jsonRes["avatar_url"]
 end
 
-function getavatar(client::Client, userID)
-    getavatar(client.info, userID)
-end
+getavatar(info::AccessInfo, user::String) = getavatar(info, User(user))
+getavatar(client::Client, user::User) = getavatar(client.info, user)
+getavatar(client::Client, user::String) = getavatar(client.info, User(user))
 
 """
     isvalid(event)
@@ -349,7 +349,7 @@ function sync!(client::Client, timeout::Int = 30)
             eventinfo = EventInfo(event["event_id"], type, sender, roomName, event["content"])
             runCallbacks(client, eventinfo)
             if type == Event.message
-                runcmds(client, eventinfo)
+                runcmd(client, eventinfo)
             end
 
         end
