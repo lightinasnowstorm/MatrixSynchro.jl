@@ -19,29 +19,33 @@ end
 Runs the command most relating to a received message, or none if no commands match.
 """
 function runcmds(client::Client, info::EventInfo)
-    lc = info.content["body"]
+    messagebody = info.content["body"]
     @debug "Looking for commands to run."
-    # this hurts me inside
-    #need to run this in try-catch because commands are user-provided code that can error.
+    # need to run this in try-catch because commands are user-provided code that can error.
     try
-        for (_, invocation) in client.commandPrecedence
-            if occursin(invocation, lc)
-                @debug "executing command: $invocation"
-                fn = client.commands[invocation]
-                argTypes = first(methods(fn)).sig.types[3:end]
-                matches = match(invocation, lc)
-                args = []
-                p = 1
-                for a in argTypes
-                    # Add parsed args to the args.
-                    push!(args, argparse(a, matches["p$p"]))
-                    p += 1
+        for cmd in client.commands
+            if occursin(cmd.functionNameMatch, messagebody)
+                @debug "Matches function: $(cmd.functionNameMatch), looking for subcommand match..."
+                for subcmd in cmd.calls
+                    @debug "Found subcommand match"
+                    if occursin(subcmd.invocation, messagebody)
+                        matches = match(subcmd.invocation, messagebody)
+                        args = []
+                        p = 1
+                        for a in subcmd.argtypes[2:end]
+                            # Add parsed args to the args.
+                            push!(args, argparse(a, matches["p$p"]))
+                            p += 1
+                        end
+                        @debug "Got args, executing."
+                        subcmd.fn(info, args...)
+                        #once a command has been executed, stop looking.
+                        return
+                    end
                 end
-                @debug "Got args, executing."
-                # splat the args into the function.
-                # If there are no args, no args are sent to it.
-                fn(info, args...)
-                # Once a command has been called, don't need to look for another.
+                # Should send some sort of notice that it failed.
+                sendmessage!(client, info.channel, cmd.help)
+                # don't keep looking.
                 return
             end
         end
@@ -51,20 +55,6 @@ function runcmds(client::Client, info::EventInfo)
             throw(e)
         end
     end
-end
-
-"""
-    addcommand!(command function, client, regex invocation, precedence)
-
-(internal)
-Adds a function as a command.
-"""
-function addcommand!(fn::Function, client::Client, invo::Regex, precedence::Int)
-    haskey(client.commands, invo) && @warn "redefining $invo"
-    client.commands[invo] = fn
-    push!(client.commandPrecedence, (precedence, invo))
-    sort!(client.commandPrecedence, by = x -> x[1])
-    @debug "Added command $invo"
 end
 
 """
@@ -98,11 +88,27 @@ Creates a command from a function. The arguments that the function takes are use
 
 `takeExtra` - Whether the command can have extra text after the end of its arguments.
 """
-function command!(fn::Function, client::Client, invocation::String; takeExtra::Bool = false)
-    command!(fn, client, Regex(neutralizeregexsymbols(invocation)), takeExtra = takeExtra)
+function command!(
+    fn::Function,
+    client::Client,
+    invocation::String;
+    takeExtra::Bool = false,
+    friendlyname::String = "",
+    description::String = "A command.",
+    help::String = "そんなのないよ？"
+)
+    command!(fn, client, Regex(neutralizeregexsymbols(invocation)), takeExtra = takeExtra, friendlyname = friendlyname, description = description, help = help)
 end
 
-function command!(fn::Function, client::Client, invocation::Regex; takeExtra::Bool = false)
+function command!(
+    fn::Function,
+    client::Client,
+    invocation::Regex;
+    takeExtra::Bool = false,
+    friendlyname::String = "",
+    description::String = "A command.",
+    help::String = "そんなのないよ？"
+)
     # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
@@ -144,5 +150,27 @@ function command!(fn::Function, client::Client, invocation::Regex; takeExtra::Bo
     # Without take extra, it has $ to make sure it ends there.
     invoregex = Regex("^$(join(invoregexbuilder,"\\s+"))$(takeExtra ?  "" : "\$")", "i")
 
-    addcommand!(fn, client, invoregex, precedence)
+    #function name is a regex to match the first part.
+    fnname = Regex("^$(invocation.pattern)", "i")
+    #advanced stuff
+    subcmd = SubCommand(precedence, invoregex, collect(fnTakesTheseArgs), fn)
+    #check if exists
+    possi = filter(x -> x.functionNameMatch == fnname, client.commands)
+    if isempty(possi)
+        #add a new command (without the string extras, those come later) and sort! the commands.
+        prec = isPlain ? 1 : 2 #this is stupid, but, reduce precedence among Commands and make it the usual system among subcommands
+        na = isempty(friendlyname) ? invocation.pattern : friendlyname
+        cmd = Command(prec, fnname, [subcmd], na, description, help)
+        push!(client.commands, cmd)
+        sort!(client.commands, by = x -> x.precedence)
+        @debug "Added command $fnname with subcommand $invoregex"
+    else
+        cmd = first(possi)
+        push!(cmd.calls, subcmd)
+        #need to sort the subcommands
+        sort!(cmd.calls, by = x -> x.precedence)
+        @debug "Added subcommand $invoregex to command $fnname"
+    end
+
+    #addcommand!(fn, client, invoregex, precedence)
 end

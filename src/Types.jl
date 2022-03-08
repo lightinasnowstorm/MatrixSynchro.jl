@@ -10,6 +10,46 @@ struct User
 end
 
 """
+    SubCommand(
+        precedence,
+        invocation,
+        argtypes,
+        function
+    )
+
+Represents a specific invocation for a `Command`
+"""
+struct SubCommand
+    precedence::Int
+    invocation::Regex
+    argtypes::Vector{Type}
+    fn::Function
+end
+
+"""
+    Command(
+        precedence,
+        function name,
+        calls,
+
+        friendlyname,
+        description,
+        help
+    )
+
+A command.
+"""
+struct Command
+    precedence::Int
+    functionNameMatch::Regex
+    calls::Array{SubCommand}
+
+    friendlyname::String
+    description::String
+    help::String
+end
+
+"""
     ConnectionChangyThing(reqID, syncToken, filterID)
 
 These are the mutable aspects of the connection.
@@ -49,8 +89,7 @@ end
         accessinfo,
         changyThing,
         callbacks=Dict(),
-        commands=Dict(),
-        commandPrecedence=[],
+        commands=[],
         errors=false,
         testing=false
         )
@@ -85,8 +124,9 @@ struct Client
     info::AccessInfo
     changyThing::ConnectionChangyThing
     callbacks::Dict{String,Array{Function}}
-    commands::Dict{Regex,Function}
-    commandPrecedence::Array{Tuple{Int,Regex}}
+    commands::Array{Command}
+    #commands::Dict{Regex,Function}
+    #commandPrecedence::Array{Tuple{Int,Regex}}
     errors::Bool
     testing::Bool
 end
@@ -154,6 +194,6 @@ end
 
 AccessInfo(username::String, serverURL::String, accessToken::String) = AccessInfo(User("@$username:$serverURL"), stripprotocol(serverURL), accessToken)
 
-Client(info::AccessInfo, errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), Dict(), [], errors, testing)
+Client(info::AccessInfo, errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), [], errors, testing)
 
 Client(username::String, serverURL::String, accessToken::String, errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors, testing)

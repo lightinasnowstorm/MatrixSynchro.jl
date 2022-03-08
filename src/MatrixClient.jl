@@ -94,6 +94,8 @@ function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bo
             "event_id" => eventID
         ))
     if formatted
+        body["format"] = "org.matrix.custom.html"
+        body["formatted_body"] = newContent
         body["m.new_content"]["format"] = "org.matrix.custom.html"
         body["m.new_content"]["formatted_body"] = newContent
     end
