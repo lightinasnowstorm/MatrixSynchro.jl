@@ -23,7 +23,7 @@ export AccessInfo, EventInfo, User, Client,
     #messages
     sendmessage!, editmessage!, reply!, deletemessage!,
     # not-state-modifying api commands
-    getrooms, getdisplayname,
+    getrooms, getdisplayname, getavatar,
     # (typed) commands
     command!, typeregex, argparse
 

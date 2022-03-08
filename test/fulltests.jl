@@ -1,8 +1,8 @@
 # make an EventInfo,
 # allowing the bot itself to trigger events and commands, and to error if there is a failure.
 client = Client(readlines("testtoken.txt")..., true, true)
-#Need to insert a channel name in here for the tests to work.
-channel = readlines("testchannel.txt")[1]
+#Need to insert a room name in here for the tests to work.
+room = readlines("testroom.txt")[1]
 
 @testset "No first sync" begin
     on!(client, Event.message) do info::EventInfo
@@ -30,8 +30,8 @@ end
     end
 
     # Send messages so the test can proceed.
-    m = sendmessage!(client, channel, "Hello World!")
-    react!(client, channel, m, "😄")
+    m = sendmessage!(client, room, "Hello World!")
+    react!(client, room, m, "😄")
     sleep(5)
     #Now that we've sent a message and reacted to it, both should run.
     sync!(client)
@@ -51,7 +51,7 @@ end
     end
 
     # Then check that we can edit the message.
-    editmessage!(client, channel, m, "こんにちは世界！")
+    editmessage!(client, room, m, "こんにちは世界！")
     sleep(5)
     sync!(client)
     @test textFromEdit
@@ -96,11 +96,11 @@ end
     end
 
     #call the comamnds to check
-    sendmessage!(client, channel, "test1")
-    sendmessage!(client, channel, "test more with more")
-    sendmessage!(client, channel, "test999")
-    sendmessage!(client, channel, "regexargs Goodbye Dystopia")
-    sendmessage!(client, channel, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
+    sendmessage!(client, room, "test1")
+    sendmessage!(client, room, "test more with more")
+    sendmessage!(client, room, "test999")
+    sendmessage!(client, room, "regexargs Goodbye Dystopia")
+    sendmessage!(client, room, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
     sleep(5)
     #and then sync to run the commands.
     sync!(client)

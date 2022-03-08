@@ -5,7 +5,7 @@ text, emote, image, and video
 module MessageType
 
 """
-A text message in a channel.
+A text message in a room.
 This can either be a new message sent, or an edit to an existing message.
 
 Format of `EventInfo.content`:
@@ -58,7 +58,7 @@ Edited Message:
 const emote = "m.emote"
 
 """
-A message with an image in a channel. This is only an image, no text.
+A message with an image in a room. This is only an image, no text.
 
 Format of `EventInfo.content`:
 
@@ -76,7 +76,7 @@ Format of `EventInfo.content`:
 const image = "m.image"
 
 """
-A message with a video in a channel. There is no text in the message.
+A message with a video in a room. There is no text in the message.
 
 Format of `EventInfo.content`:
 

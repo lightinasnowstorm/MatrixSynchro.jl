@@ -132,7 +132,7 @@ struct Client
 end
 
 """
-    EventInfo(client, eventid, type, sender, channel, content)
+    EventInfo(client, eventid, type, sender, room, content)
 
 Information about a triggered event.
 
@@ -142,7 +142,7 @@ Information about a triggered event.
 
 `sender` - The Matrix ID of the user who brought about the event.
 
-`channel` - The channel the event comes from.
+`room` - The room the event comes from.
 
 `content` - The content of the event. Varies based on event type.
 See `Event` and each of the event types within.
@@ -151,7 +151,7 @@ struct EventInfo
     eventID::String
     type::String
     sender::String
-    channel::String
+    room::String
     content::Dict{String,Any}
 end
 

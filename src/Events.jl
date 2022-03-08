@@ -4,7 +4,7 @@ Events are split into timeline, state, account_data, and ephemeral events. Only 
 """
 module Event
 """
-A message in a channel.
+A message in a room.
 See `MessageType` for more information about this event
 and what `EventInfo.content` is for it.
 """

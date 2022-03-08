@@ -24,6 +24,6 @@ docs/site/
 Manifest.toml
 
 test/testtoken.txt
-test/testchannel.txt
+test/testroom.txt
 
 *.code-workspace

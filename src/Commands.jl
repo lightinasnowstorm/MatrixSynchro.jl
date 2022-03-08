@@ -44,7 +44,7 @@ function runcmds(client::Client, info::EventInfo)
                     end
                 end
                 # Should send some sort of notice that it failed.
-                sendmessage!(client, info.channel, cmd.help)
+                sendmessage!(client, info.room, cmd.help)
                 # don't keep looking.
                 return
             end

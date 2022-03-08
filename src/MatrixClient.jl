@@ -44,7 +44,7 @@ end
 """
     sendmessage(client, roomID, message, formatted=false, emote=false)
 
-Sends a text message in a channel.
+Sends a text message in a room.
 
 `format` makes the message uses Matrix's custom HTML message formatting.
 
@@ -74,7 +74,7 @@ end
     editmessage!(client, eventinfo, newcontent, formatted=false, emote=false)
 
 Changes the content of the message referred to by `eventID` to `new_content`.
-`roomID` is the channel that the message to edit is in.
+`roomID` is the room that the message to edit is in.
 
 `format` makes the new content use Matrix's custom HTML message formatting.
 
@@ -108,7 +108,7 @@ function editmessage!(client::Client, roomID, eventID, newContent; formatted::Bo
 end
 
 function editmessage!(client::Client, info::EventInfo, newContent; formatted::Bool = false, emote::Bool = false)
-    editmessage!(client, info.channel, info.eventID, newContent, formatted = formatted, emote = emote)
+    editmessage!(client, info.room, info.eventID, newContent, formatted = formatted, emote = emote)
 end
 
 """
@@ -129,7 +129,7 @@ function reply!(client::Client, info::EventInfo, reply::String; emote::Bool = fa
         "body" => "> <$(info.sender)> $replystring\n\n$reply",
         "format" => "org.matrix.custom.html",
         "msgtype" => emote ? MessageType.emote : MessageType.text,
-        "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.channel)/$(info.eventID)\">In reply to </a>" *
+        "formatted-body" => "<mx-reply><blockquote><a href=\"https://matrix.to/#/$(info.room)/$(info.eventID)\">In reply to </a>" *
                             "<a> href=\"https://matrix.to/#/$(info.sender)\">$(info.sender)</a> $replystring</blockquote></mx-reply>$reply",
         "m.relates_to" => Dict(
             "m.in_reply_to" => Dict(
@@ -138,7 +138,7 @@ function reply!(client::Client, info::EventInfo, reply::String; emote::Bool = fa
         )
     )
 
-    res = matrixrequest(client.info, "PUT", "rooms/$(info.channel)/send/m.room.message/$(txnid(client))", a)
+    res = matrixrequest(client.info, "PUT", "rooms/$(info.room)/send/m.room.message/$(txnid(client))", a)
     res.status == 200 || throw(MatrixError("Unable to reply."))
     JSON.parse(String(res.body))["event_id"]
 end
@@ -158,7 +158,7 @@ function deletemessage!(client::Client, roomID, eventID)
 end
 
 function deletemessage!(client::Client, info::EventInfo)
-    deletemessage!(client, info.channel, info.eventID)
+    deletemessage!(client, info.room, info.eventID)
 end
 
 """
@@ -194,7 +194,7 @@ function react!(client::Client, roomID, eventID, reaction)
 end
 
 function react!(client::Client, info::EventInfo, reaction)
-    react!(client, info.channel, info.eventID, reaction)
+    react!(client, info.room, info.eventID, reaction)
 end
 
 """
@@ -222,11 +222,29 @@ function getdisplayname(info::AccessInfo, userID)
     res = matrixrequest(info, "GET", "profile/$userID/displayname")
     res.status ≠ 200 && throw(MatrixError("no such user."))
     jsonRes = JSON.parse(String(res.body))
-    jsonRes["displayname"]
+    isempty(jsonRes) && throw(MatrixError("Could not get data for user $userID"))
+    jsonRes["displayname"] # for some nonexistent users t
 end
 
 function getdisplayname(client::Client, userID)
     getdisplayname(client.info, userID)
+end
+
+"""
+    getavatar(info|client, userID)
+
+Gets the matrix URL for the avatar of the user specified by `userID`
+"""
+function getavatar(info::AccessInfo, userID)
+    res = matrixrequest(info, "GET", "profile/$userID")
+    res.status ≠ 200 && throw(MatrixError("no such user."))
+    jsonRes = JSON.parse(String(res.body))
+    isempty(jsonRes) && throw(MatrixError("Could not get data for user $userID"))
+    jsonRes["avatar_url"]
+end
+
+function getavatar(client::Client, userID)
+    getavatar(client.info, userID)
 end
 
 """
