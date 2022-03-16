@@ -53,13 +53,17 @@ function runsubcmd(client::Client, info::EventInfo, cmd::Command, subcmd::SubCom
         matches = match(subcmd.invocation, messagebody)
         args = []
         p = 1
-        for a in subcmd.argtypes[2:end]
+        for a in subcmd.argtypes
             # Add parsed args to the args.
             push!(args, argparse(a, matches["p$p"]))
             p += 1
         end
         @debug "Got args, executing."
-        subcmd.fn(info, args...)
+        if subcmd.matchparam
+            subcmd.fn(info, matches, args...)
+        else
+            subcmd.fn(info, args...)
+        end
     catch e
         @warn "Executing $(subcmd.invocation) for $(info.sender) failed!"
         # send failure message.
@@ -133,6 +137,8 @@ function command!(
     help::String = "そんなのないよ？",
     onfail::String = "Command failed."
 )
+
+    isPlain = occursin(invocation, invocation.pattern)
     # Make sure that any symbols in the command's invocation aren't interpreted as regex control characters.
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
 
@@ -142,8 +148,17 @@ function command!(
         throw(ArgumentError("Command functions must take EventInfo as first parameter"))
     end
 
+    # If it's a regex and the second arg is a match, do special stuff
+    matchparam = !isPlain && length(fnTakesTheseArgs)>1 && fnTakesTheseArgs[2] <: RegexMatch
+
+    if matchparam
+        fnTakesTheseArgs = fnTakesTheseArgs[3:end]
+    else
+        fnTakesTheseArgs = fnTakesTheseArgs[2:end]
+    end
+
     # determine precedence level
-    isPlain = occursin(invocation, invocation.pattern)
+
     hasArgs = length(fnTakesTheseArgs) > 1
     precedence = Dict{Tuple,Int}(
         # Neither args or extra.
@@ -164,7 +179,7 @@ function command!(
 
     p = 1
     # For each of the other arguments of the function
-    for arg in fnTakesTheseArgs[2:end]
+    for arg in fnTakesTheseArgs
         # Get the regex for the type and add it to the builder.
         push!(invoregexbuilder, typeregex(arg, "p$p"))
         # p<n> is a capture group in the regex for this argument.
@@ -177,7 +192,7 @@ function command!(
     # function name is a regex to match the first part.
     fnname = Regex("^$(invocation.pattern)", "i")
     # advanced stuff
-    subcmd = SubCommand(precedence, invoregex, collect(fnTakesTheseArgs), fn)
+    subcmd = SubCommand(precedence, invoregex, collect(fnTakesTheseArgs), matchparam, fn)
     # check if exists
     possi = filter(x -> x.functionNameMatch == fnname, client.commands)
     if isempty(possi)

@@ -24,6 +24,7 @@ struct SubCommand
     precedence::Int
     invocation::Regex
     argtypes::Vector{Type}
+    matchparam::Bool
     fn::Function
 end
 

@@ -69,6 +69,7 @@ end
     global testdigits = false
     global testregexargs = false
     global testargs = false
+    global cattest = false
 
     command!(client, "test1") do q::EventInfo
         global test1 = true
@@ -95,12 +96,18 @@ end
         global testargs = true
     end
 
+    command!(client, r"I want a (?<type>\w+) cat!") do info::EventInfo, m::RegexMatch
+        @test m["type"] == "tabby"
+        global cattest = true
+    end
+
     # call the comamnds to check
     sendmessage!(client, room, "test1")
     sendmessage!(client, room, "test more with more")
     sendmessage!(client, room, "test999")
     sendmessage!(client, room, "regexargs Goodbye Dystopia")
     sendmessage!(client, room, "alltheargs 45 45.4 \"first half\" \"of the test\" $(client.info.ID) no quotes? No problem. false")
+    sendmessage!(client, room, "I want a tabby cat!")
     sleep(5)
     # and then sync to run the commands.
     sync!(client)
@@ -113,4 +120,5 @@ end
     @test testdigits
     @test testregexargs
     @test testargs
+    @test cattest
 end

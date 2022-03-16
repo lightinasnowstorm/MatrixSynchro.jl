@@ -367,7 +367,7 @@ function runCallbacks(client::Client, event::EventInfo)
             # Errors in one callback should not prevent others from running.
             try
                 callback(event)
-            catch
+            catch e
                 @error e
                 if client.errors
                     throw(e)
