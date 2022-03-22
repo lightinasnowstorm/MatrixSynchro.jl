@@ -6,7 +6,7 @@ command!(
     client,
     "avatarurl",
     help = "Needs a user!",
-    onfailure = "Are you sure that user exists?"
+    onfail = "Are you sure that user exists?"
 ) do info::EventInfo, user::User
     #dark magic.
     url = getavatar(client, user)

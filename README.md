@@ -15,10 +15,10 @@ on!(client, Event.message) do info::EventInfo
 end
 
 command!(client, "beep") do info::EventInfo
-  sendmessage!(client, info.channel, "boop!")
+  sendmessage!(client, info.room, "boop!")
 end
 
 command!(client, "say") do info::EventInfo, saythis::String
-  sendmessage(client, data.channel, "$(getdisplayname(client, info.sender)) says: $saythis")
+  sendmessage(client, data.room, "$(getdisplayname(client, info.sender)) says: $saythis")
 end
 ```

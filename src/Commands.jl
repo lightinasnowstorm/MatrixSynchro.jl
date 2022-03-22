@@ -58,10 +58,11 @@ function runsubcmd(client::Client, info::EventInfo, cmd::Command, subcmd::SubCom
             push!(args, argparse(a, matches["p$p"]))
             p += 1
         end
-        @debug "Got args, executing."
         if subcmd.matchparam
+            @debug "Got args (matchparam extra), executing..."
             subcmd.fn(info, matches, args...)
         else
+            @debug "Got args, executing."
             subcmd.fn(info, args...)
         end
     catch e
@@ -69,6 +70,8 @@ function runsubcmd(client::Client, info::EventInfo, cmd::Command, subcmd::SubCom
         # send failure message.
         sendmessage!(client, info.room, cmd.onfailure)
         if client.errors
+            @error e
+            # ! thanks to async, this doesn't work anymore.
             throw(e)
         end
     end
