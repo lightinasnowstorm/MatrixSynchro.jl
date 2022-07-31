@@ -17,7 +17,7 @@ Sends a request to the Matrix homeserver.
 
 `body` - body for the request, sent as JSON
 """
-function matrixrequest(info::AccessInfo, func::String, endpoint::String, body = Dict())
+function matrixrequest(info::AccessInfo, func::AbstractString, endpoint::AbstractString, body = Dict())
     # Success or failure, just send the result back to the calling function:
     # It gets to deal with what went wrong.
     try
@@ -118,7 +118,7 @@ Sends a message as a reply to another message, given as as an EventInfo. The rep
 
 `emote` makes the message a /me message
 """
-function reply!(client::Client, info::EventInfo, reply::String; emote::Bool = false)
+function reply!(client::Client, info::EventInfo, reply::AbstractString; emote::Bool = false)
     # get the "string" to reply to.
     replystring = if info.content["msgtype"] == MessageType.text
         info.content["body"]
@@ -226,9 +226,9 @@ function getdisplayname(info::AccessInfo, userID::User)
     jsonRes["displayname"] # for some nonexistent users t
 end
 
-getdisplayname(info::AccessInfo, user::String) = getdisplayname(info, User(user))
+getdisplayname(info::AccessInfo, user::AbstractString) = getdisplayname(info, User(user))
 getdisplayname(client::Client, user::User) = getdisplayname(client.info, user)
-getdisplayname(client::Client, user::String) = getdisplayname(client.info, User(user))
+getdisplayname(client::Client, user::AbstractString) = getdisplayname(client.info, User(user))
 
 """
     getavatar(info|client, userID)
@@ -243,9 +243,9 @@ function getavatar(info::AccessInfo, user::User)
     jsonRes["avatar_url"]
 end
 
-getavatar(info::AccessInfo, user::String) = getavatar(info, User(user))
+getavatar(info::AccessInfo, user::AbstractString) = getavatar(info, User(user))
 getavatar(client::Client, user::User) = getavatar(client.info, user)
-getavatar(client::Client, user::String) = getavatar(client.info, User(user))
+getavatar(client::Client, user::AbstractString) = getavatar(client.info, User(user))
 
 """
     isvalid(event)
@@ -382,7 +382,7 @@ end
 
 Adds a callback for `event` to the client.
 """
-function on!(fn::Function, client::Client, event::String)
+function on!(fn::Function, client::Client, event::AbstractString)
     fnTakesTheseArgs = first(methods(fn)).sig.types[2:end]
     if length(fnTakesTheseArgs) == 1 &&
        (fnTakesTheseArgs[1] <: EventInfo || fnTakesTheseArgs[1] == Any)

@@ -65,10 +65,10 @@ Ephemeral event triggered when a user starts or stops typing.
 Structure:
 
     ephemeral =>
-        events::Array =>
+        events::Vector =>
             type = "m.typing"
                 content =>
-                    user_ids::Array =>
+                    user_ids::Vector =>
                         (the IDs of the users that are typing)
 """
 const typing = "m.typing"

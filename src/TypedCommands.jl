@@ -1,6 +1,6 @@
 # These aren't actually regexes
-# If it's an Array{String}, it's [before group, inside capture group, after capture group]
-const typeRegexes = Dict{Type,Union{String,Array{String}}}(
+# If it's an Vector{String}, it's [before group, inside capture group, after capture group]
+const typeRegexes = Dict{Type,Union{AbstractString,Vector{AbstractString}}}(
     # ! Note for numeric types: Size isn't checked!
     # ! Will fail if a user enters a really large number.
     # ! Will default to Any if the type isn't in here!
@@ -38,7 +38,7 @@ function argparse(_::Type{User}, s::AbstractString)
     return User(s)
 end
 
-function argparse(_::Type{String}, s::AbstractString)
+function argparse(_::Type{T}, s::AbstractString) where {T<: AbstractString}
     return string(s)
 end
 
@@ -54,7 +54,7 @@ end
 # Generate the regex-giving method for the types that have a consistent one.
 for typ in keys(typeRegexes)
     eval(quote
-        function typeregex(_::Type{T}, name::String) where {T<:$typ}
+        function typeregex(_::Type{T}, name::AbstractString) where {T<:$typ}
             "(?<$name>$(typeRegexes[$typ]))"
         end
     end)
@@ -66,11 +66,12 @@ end
 
 Returns a named regex group that captures `type`. Used for capturing typed command arguments in text.
 """
-function typeregex(_::Type{String}, name::String)
+function typeregex(_::Type{T}, name::AbstractString) where T<: AbstractString
     "\"?(?<$name>[^\"]+)\"?"
 end
 
+
 # This is for Any. Types are very specific.
-function typeregex(_::Type, name::String)
+function typeregex(_::Type, name::AbstractString)
     "(?<$name>\\S+)" # A string of anything without spaces. Please type your functions.
 end

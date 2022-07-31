@@ -7,7 +7,7 @@ Represents a matrix user, holding their ID in the form @username:homeserver
 """
 struct User
     ID::String
-    User(s::String) = occursin(r"@[\w.\-=\/]+:[a-zA-z-]+\.[a-zA-z-\.]+", s) ? new(s) : throw(ArgumentError("Not a valid form for a user!"))
+    User(s::AbstractString) = occursin(r"@[\w.\-=\/]+:[a-zA-z-]+\.[a-zA-z-\.]+", s) ? new(s) : throw(ArgumentError("Not a valid form for a user!"))
 end
 
 """
@@ -45,12 +45,12 @@ A command.
 struct Command
     precedence::Int
     functionNameMatch::Regex
-    calls::Array{SubCommand}
+    calls::Vector{SubCommand}
 
-    friendlyname::String
-    description::String
-    help::String
-    onfailure::String
+    friendlyname::AbstractString
+    description::AbstractString
+    help::AbstractString
+    onfailure::AbstractString
 end
 
 """
@@ -67,7 +67,7 @@ before the time the syncToken represents
 """
 mutable struct ConnectionChangyThing
     reqID::Int
-    syncToken::String
+    syncToken::AbstractString
     filterID::Int
 end
 
@@ -84,8 +84,8 @@ This is the authentication information for a bot user.
 """
 struct AccessInfo
     ID::User
-    serverURL::String
-    accessToken::String
+    serverURL::AbstractString
+    accessToken::AbstractString
 end
 
 """
@@ -127,8 +127,8 @@ When true, the bot will execute callbacks and commands on its own messages.
 struct Client
     info::AccessInfo
     changyThing::ConnectionChangyThing
-    callbacks::Dict{String,Array{Function}}
-    commands::Array{Command}
+    callbacks::Dict{AbstractString,Vector{Function}}
+    commands::Vector{Command}
     errors::Bool
     testing::Bool
 end
@@ -150,11 +150,11 @@ Information about a triggered event.
 See `Event` and each of the event types within.
 """
 struct EventInfo
-    eventID::String
-    type::String
-    sender::String
-    room::String
-    content::Dict{String,Any}
+    eventID::AbstractString
+    type::AbstractString
+    sender::AbstractString
+    room::AbstractString
+    content::Dict{AbstractString,Any}
 end
 
 """
@@ -163,7 +163,7 @@ end
 An error that occured with a request to the Matrix homeserver.
 """
 struct MatrixError <: Exception
-    text::String
+    text::AbstractString
 end
 
 function showerror(io::IO, e::MatrixError)
@@ -194,8 +194,8 @@ function show(io::IO, u::User)
     print(io, string(u))
 end
 
-AccessInfo(username::String, serverURL::String, accessToken::String) = AccessInfo(User("@$username:$serverURL"), stripprotocol(serverURL), accessToken)
+AccessInfo(username::AbstractString, serverURL::AbstractString, accessToken::AbstractString) = AccessInfo(User("@$username:$serverURL"), stripprotocol(serverURL), accessToken)
 
 Client(info::AccessInfo; errors::Bool = false, testing::Bool = false) = Client(info, ConnectionChangyThing(0, "", 0), Dict(), [], errors, testing)
 
-Client(username::String, serverURL::String, accessToken::String; errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors=errors, testing=testing)
+Client(username::AbstractString, serverURL::AbstractString, accessToken::AbstractString; errors::Bool = false, testing::Bool = false) = Client(AccessInfo(username, serverURL, accessToken), errors=errors, testing=testing)

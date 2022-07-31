@@ -83,7 +83,7 @@ end
 (internal)
 Escapes all characters that have a meaning in regex so that a string containing them can be used as a regex that matches itself.
 """
-function neutralizeregexsymbols(s::String)
+function neutralizeregexsymbols(s::AbstractString)
     function neutralizeregexchar(c::Char)
         # Escape all special characters with a regex meaning with a backslash.
         if c ∈ ['\\', '^', '$', '{', '}', '[', ']', '(', ')', '.', '*', '+', '?', '|', '<', '>', '-', '&']
@@ -111,12 +111,12 @@ Creates a command from a function. The arguments that the function takes are use
 function command!(
     fn::Function,
     client::Client,
-    invocation::String;
+    invocation::AbstractString;
     takeExtra::Bool = false,
-    friendlyname::String = "",
-    description::String = "A command.",
-    help::String = "そんなのないよ？",
-    onfail::String = "Command failed."
+    friendlyname::AbstractString = "",
+    description::AbstractString = "A command.",
+    help::AbstractString = "そんなのないよ？",
+    onfail::AbstractString = "Command failed."
 )
     command!(
         fn,
@@ -135,10 +135,10 @@ function command!(
     client::Client,
     invocation::Regex;
     takeExtra::Bool = false,
-    friendlyname::String = "",
-    description::String = "A command.",
-    help::String = "そんなのないよ？",
-    onfail::String = "Command failed."
+    friendlyname::AbstractString = "",
+    description::AbstractString = "A command.",
+    help::AbstractString = "そんなのないよ？",
+    onfail::AbstractString = "Command failed."
 )
 
     isPlain = occursin(invocation, invocation.pattern)
