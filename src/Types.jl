@@ -7,7 +7,7 @@ Represents a matrix user, holding their ID in the form @username:homeserver
 """
 struct User
     ID::String
-    User(s::AbstractString) = occursin(r"@[\w.\-=\/]+:[a-zA-z-]+\.[a-zA-z-\.]+", s) ? new(s) : throw(ArgumentError("Not a valid form for a user!"))
+    User(s::String) = occursin(r"@[\w.\-=\/]+:[a-zA-z-]+\.[a-zA-z-\.]+", s) ? new(s) : throw(ArgumentError("Not a valid form for a user!"))
 end
 
 """
@@ -47,10 +47,10 @@ struct Command
     functionNameMatch::Regex
     calls::Vector{SubCommand}
 
-    friendlyname::AbstractString
-    description::AbstractString
-    help::AbstractString
-    onfailure::AbstractString
+    friendlyname::String
+    description::String
+    help::String
+    onfailure::String
 end
 
 """
@@ -67,7 +67,7 @@ before the time the syncToken represents
 """
 mutable struct ConnectionChangyThing
     reqID::Int
-    syncToken::AbstractString
+    syncToken::String
     filterID::Int
 end
 
@@ -84,8 +84,8 @@ This is the authentication information for a bot user.
 """
 struct AccessInfo
     ID::User
-    serverURL::AbstractString
-    accessToken::AbstractString
+    serverURL::String
+    accessToken::String
 end
 
 """
@@ -127,7 +127,7 @@ When true, the bot will execute callbacks and commands on its own messages.
 struct Client
     info::AccessInfo
     changyThing::ConnectionChangyThing
-    callbacks::Dict{AbstractString,Vector{Function}}
+    callbacks::Dict{String,Vector{Function}}
     commands::Vector{Command}
     errors::Bool
     testing::Bool
@@ -150,11 +150,11 @@ Information about a triggered event.
 See `Event` and each of the event types within.
 """
 struct EventInfo
-    eventID::AbstractString
-    type::AbstractString
-    sender::AbstractString
-    room::AbstractString
-    content::Dict{AbstractString,Any}
+    eventID::String
+    type::String
+    sender::String
+    room::String
+    content::Dict{String,Any}
 end
 
 """
@@ -163,7 +163,7 @@ end
 An error that occured with a request to the Matrix homeserver.
 """
 struct MatrixError <: Exception
-    text::AbstractString
+    text::String
 end
 
 function showerror(io::IO, e::MatrixError)
@@ -185,6 +185,7 @@ function stripprotocol(serverURL)
 end
 
 User(id::SubString) = User(string(id))
+User(id::AbstractString) = User(string(id))
 
 function string(u::User)
     u.ID
